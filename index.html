@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bản đồ Mạng lưới Đột quỵ khu vực TP.HCM</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Leaflet Routing Machine CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+    <!-- Font Awesome cho Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+
+        /* Custom Marker Styles - Cập nhật thiết kế nổi bật */
+        .custom-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            border: 2px solid white; /* Viền trắng phân cách lớp trạng thái và lớp nền */
+            font-size: 14px;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .marker-tier-3 { background-color: #ef4444; } /* Red */
+        .marker-tier-2 { background-color: #f97316; } /* Orange */
+        .marker-tier-1 { background-color: #3b82f6; } /* Blue */
+
+        /* Các class vòng sáng trạng thái */
+        .marker-status-0 {
+            box-shadow: 0 0 0 3.5px #22c55e, 0 4px 6px rgba(0,0,0,0.3); /* Xanh lá - Sẵn sàng */
+        }
+        .marker-status-1 {
+            box-shadow: 0 0 0 3.5px #eab308, 0 4px 6px rgba(0,0,0,0.3); /* Vàng - Bận */
+        }
+        .marker-status-2 {
+            /* Đỏ nhấp nháy - Quá tải */
+            animation: marker-pulse-red 1.5s infinite;
+        }
+
+        @keyframes marker-pulse-red {
+            0% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 0 3.5px rgba(239, 68, 68, 0.8); }
+            70% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 0 3.5px rgba(239, 68, 68, 0); }
+        }
+
+        /* Ẩn bảng hướng dẫn đường đi mặc định của Routing Machine để giao diện gọn gàng */
+        .leaflet-routing-container {
+            display: none !important;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Mobile Adjustments for Popups */
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+        }
+        .leaflet-popup-content {
+            margin: 12px;
+            width: max-content !important;
+            max-width: 280px;
+        }
+    </style>
+</head>
+<body class="h-[100dvh] flex flex-col overflow-hidden">
+
+    <!-- Header / Navbar (Responsive) -->
+    <header class="bg-slate-900 text-white p-3 md:p-4 shadow-md flex justify-between items-center z-[2000] relative flex-shrink-0">
+        <div class="flex items-center gap-2 md:gap-3">
+            <i class="fa-solid fa-brain text-red-500 text-xl md:text-2xl"></i>
+            <div>
+                <h1 class="hidden md:block text-xl font-bold tracking-tight">HỆ THỐNG ĐIỀU PHỐI CẤP CỨU ĐỘT QUỴ THỜI GIAN THỰC</h1>
+                <h1 class="md:hidden text-sm font-bold tracking-tight">ĐIỀU PHỐI ĐỘT QUỴ</h1>
+                <p class="text-[10px] md:text-xs text-slate-400">Dữ liệu mạng lưới TP.HCM</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 md:gap-6">
+            <div class="hidden md:flex flex-col text-right">
+                <span class="text-sm text-slate-300">Tổng số cơ sở hiển thị</span>
+                <span class="text-xl font-bold text-green-400" id="total-active">-/-</span>
+            </div>
+            <div class="bg-slate-800 px-2 py-1 md:px-4 md:py-2 rounded-lg flex items-center gap-1.5 md:gap-2 border border-slate-700">
+                <div class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-xs md:text-sm font-mono" id="clock">00:00:00</span>
+            </div>
+            
+            <!-- Phần Đăng nhập -->
+            <div class="border-l border-slate-700 pl-3 md:pl-6 flex items-center gap-2 md:gap-4">
+                <div id="user-info" class="text-right hidden">
+                    <!-- Thông tin user đăng nhập -->
+                </div>
+                <button id="btn-login" onclick="openLoginModal()" class="bg-blue-600 hover:bg-blue-700 p-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition shadow-md">
+                    <i class="fa-solid fa-user-lock md:mr-2"></i><span class="hidden md:inline">Đăng nhập</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Layout (Responsive Flex-col on mobile, flex-row on desktop) -->
+    <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
+        
+        <!-- Sidebar (Bottom on mobile, Left on desktop) -->
+        <aside class="w-full md:w-[420px] flex-1 md:flex-none h-auto md:h-full bg-white shadow-xl z-10 flex flex-col flex-shrink-0 order-2 md:order-1 border-t md:border-t-0 md:border-r border-gray-200">
+            <!-- Thống kê nhanh -->
+            <div class="hidden md:block p-4 border-b border-gray-100 bg-slate-50">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase mb-3">Thống kê năng lực (Dữ liệu mẫu)</h2>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-red-50 rounded p-2 border border-red-100">
+                        <div class="text-xl font-bold text-red-600">17</div>
+                        <div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 3<br>(Can thiệp)</div>
+                    </div>
+                    <div class="bg-orange-50 rounded p-2 border border-orange-100">
+                        <div class="text-xl font-bold text-orange-600">19</div>
+                        <div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 2<br>(Tiêu sợi huyết)</div>
+                    </div>
+                    <div class="bg-blue-50 rounded p-2 border border-blue-100">
+                        <div class="text-xl font-bold text-blue-600">51</div>
+                        <div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 1<br>(Ban đầu)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bộ lọc -->
+            <div class="p-3 md:p-4 border-b border-gray-100 bg-white">
+                <h2 class="text-xs md:text-sm font-semibold text-gray-700 mb-2 md:mb-3"><i class="fa-solid fa-filter mr-2"></i>Bộ lọc điều phối</h2>
+                
+                <div class="space-y-2 md:space-y-3">
+                    <div class="flex gap-2 items-center">
+                        <select id="filter-tier" class="flex-1 text-xs md:text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2 bg-gray-50 border">
+                            <option value="all">Tất cả các tầng</option>
+                            <option value="3">Tầng 3 (Chuyên sâu)</option>
+                            <option value="2">Tầng 2 (Cơ bản)</option>
+                            <option value="1">Tầng 1 (Ban đầu)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button id="btn-rtpa" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="rtpa">
+                            Tiêu sợi huyết
+                        </button>
+                        <button id="btn-evt" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="evt">
+                            Can thiệp mạch não
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách bệnh viện -->
+            <div class="flex-1 overflow-y-auto p-2 md:p-3 bg-gray-50/50" id="hospital-list">
+                <!-- Được render bằng JavaScript -->
+            </div>
+        </aside>
+
+        <!-- Map Container (Top on mobile, Right on desktop) -->
+        <main class="w-full md:flex-1 relative h-[45vh] md:h-auto order-1 md:order-2 flex-shrink-0 z-[0]">
+            <div id="map"></div>
+            
+            <!-- Nút Định vị lại Vị trí (Overlaying Map) -->
+            <button id="btn-re-locate" class="absolute top-4 right-4 md:bottom-6 md:top-auto md:right-auto md:left-6 z-[1000] bg-white w-10 h-10 rounded-full shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 flex items-center justify-center text-blue-600 hover:bg-blue-50 focus:outline-none transition-transform active:scale-95" title="Định vị lại vị trí của tôi">
+                <i class="fa-solid fa-location-crosshairs text-lg"></i>
+            </button>
+
+            <!-- Chú thích bản đồ (Ẩn trên mobile để tiết kiệm không gian) -->
+            <div class="hidden md:block absolute bottom-6 right-6 z-[1000] bg-white/95 backdrop-blur p-3 rounded-lg shadow-lg border border-gray-200">
+                <h4 class="text-xs font-bold text-gray-700 mb-2">Chú giải</h4>
+                <div class="space-y-2.5 text-xs">
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block border border-gray-200"></span> Tầng 3 (Can thiệp mạch não + Tiêu sợi huyết)</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block border border-gray-200"></span> Tầng 2 (Chỉ Tiêu sợi huyết)</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block border border-gray-200"></span> Tầng 1 (Cấp cứu ban đầu)</div>
+                    <hr class="my-1.5 border-gray-200">
+                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-0 inline-block"></span> Sẵn sàng nhận bệnh</div>
+                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-1 inline-block"></span> Đang xử lý ca cấp cứu (Bận)</div>
+                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-2 inline-block"></span> Quá tải / Tạm ngưng</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Cập nhật Trạng thái/Sự cố -->
+    <div id="update-modal" class="fixed inset-0 bg-black/50 z-[3000] hidden flex justify-center items-center p-4">
+        <div class="bg-white rounded-xl p-5 md:p-6 w-full max-w-[400px] shadow-2xl transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-base md:text-lg font-bold text-slate-800"><i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i>Báo cáo trạng thái</h2>
+                <button onclick="closeUpdateModal()" class="text-gray-400 hover:text-red-500 p-2 -mr-2"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <p id="modal-hospital-name" class="font-semibold text-blue-700 mb-4 bg-blue-50 p-2.5 rounded border border-blue-100 text-sm"></p>
+            <input type="hidden" id="modal-hospital-id">
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Tình trạng hiện tại</label>
+                <select id="modal-status" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm">
+                    <option value="0">🟢 Sẵn sàng nhận bệnh</option>
+                    <option value="1">🟡 Đang xử lý ca cấp cứu (Bận)</option>
+                    <option value="2">🔴 Quá tải / Tạm ngưng tiếp nhận</option>
+                </select>
+            </div>
+
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Ghi chú sự cố (nếu có)</label>
+                <textarea id="modal-note" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="VD: Hệ thống can thiệp mạch não đang bảo trì..."></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2.5">
+                <button onclick="closeUpdateModal()" class="flex-1 md:flex-none px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm">Hủy</button>
+                <button onclick="saveUpdateStatus()" class="flex-1 md:flex-none px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md text-sm">Lưu báo cáo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Đăng nhập Phân Quyền -->
+    <div id="login-modal" class="fixed inset-0 bg-black/60 z-[4000] hidden flex justify-center items-center p-4">
+        <div class="bg-white rounded-xl p-6 md:p-8 w-full max-w-[450px] shadow-2xl">
+            <h2 class="text-xl md:text-2xl font-bold text-center text-slate-800 mb-2">Đăng nhập Hệ thống</h2>
+            <p class="text-center text-xs md:text-sm text-gray-500 mb-6">Cổng thông tin dành cho các đơn vị Y tế</p>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Tài khoản đơn vị</label>
+                <select id="login-account" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm">
+                    <!-- Sẽ được điền bằng JavaScript -->
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Mật khẩu</label>
+                <input type="password" id="login-pass" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Nhập mật khẩu (Mặc định: 123)">
+            </div>
+
+            <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium shadow-md transition text-sm">Đăng nhập an toàn</button>
+            <button onclick="closeLoginModal()" class="w-full mt-2.5 bg-transparent text-gray-500 py-2.5 rounded-lg hover:text-gray-700 font-medium transition text-sm">Hủy bỏ</button>
+        </div>
+    </div>
+
+    <!-- Leaflet & Routing Machine JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+    <script>
+        // --- 1. DỮ LIỆU MẪU (87 cơ sở) ---
+        const hospitalsData = [
+            // TẦNG 3 (17 cơ sở)
+            { id: 1, name: "Bệnh viện Nhân dân 115", tier: 3, rtpa: true, evt: true, lat: 10.7760, lng: 106.6660, phone: "028 3865 2368" },
+            { id: 2, name: "Bệnh viện Đại học Y Dược TP. HCM", tier: 3, rtpa: true, evt: true, lat: 10.7550, lng: 106.6610, phone: "028 3855 4269" },
+            { id: 3, name: "Bệnh viện Thống Nhất", tier: 3, rtpa: true, evt: true, lat: 10.7930, lng: 106.6530, phone: "028 3869 0277" },
+            { id: 4, name: "Bệnh viện Nhi Đồng 2", tier: 3, rtpa: true, evt: true, lat: 10.7810, lng: 106.7020, phone: "028 3829 5723" },
+            { id: 5, name: "Bệnh viện Tâm Anh TP. Hồ Chí Minh", tier: 3, rtpa: true, evt: true, lat: 10.8010, lng: 106.6650, phone: "028 7102 6789" },
+            { id: 6, name: "Bệnh viện Gia An 115", tier: 3, rtpa: true, evt: true, lat: 10.7380, lng: 106.6110, phone: "028 6288 5886" },
+            { id: 7, name: "Bệnh viện Đa khoa Hồng Đức II", tier: 3, rtpa: true, evt: true, lat: 10.8440, lng: 106.6450, phone: "028 3996 9999" },
+            { id: 8, name: "Bệnh viện Chợ Rẫy", tier: 3, rtpa: true, evt: true, lat: 10.7580, lng: 106.6580, phone: "028 3855 4137" },
+            { id: 9, name: "Bệnh viện Nguyễn Tri Phương", tier: 3, rtpa: true, evt: true, lat: 10.7555, lng: 106.6710, phone: "028 3923 4332" },
+            { id: 10, name: "Vinmec Central Park", tier: 3, rtpa: true, evt: true, lat: 10.7950, lng: 106.7220, phone: "028 3622 1166" },
+            { id: 11, name: "Bệnh viện Đa khoa Hoàn Mỹ Sài Gòn", tier: 3, rtpa: true, evt: true, lat: 10.7970, lng: 106.6850, phone: "028 3990 2468" },
+            { id: 12, name: "Bệnh viện Thành phố Thủ Đức", tier: 3, rtpa: true, evt: true, lat: 10.8520, lng: 106.7560, phone: "028 2244 4666" },
+            { id: 13, name: "Bệnh viện FV", tier: 3, rtpa: true, evt: true, lat: 10.7310, lng: 106.7050, phone: "028 5411 3333" },
+            { id: 14, name: "Bệnh viện Đa khoa khu vực Thủ Đức", tier: 3, rtpa: true, evt: true, lat: 10.8650, lng: 106.7620, phone: "028 3722 3222" },
+            { id: 15, name: "Bệnh viện Nhân dân Gia Định", tier: 3, rtpa: true, evt: true, lat: 10.8030, lng: 106.6900, phone: "028 3841 2692" },
+            { id: 16, name: "BỆNH VIỆN ĐA KHOA XUYÊN Á", tier: 3, rtpa: true, evt: true, lat: 10.8870, lng: 106.5680, phone: "1800 9075" },
+            { id: 17, name: "Bệnh viện Đa khoa Vạn Hạnh", tier: 3, rtpa: true, evt: true, lat: 10.7780, lng: 106.6680, phone: "028 3863 2553" },
+            
+            // TẦNG 2 (19 cơ sở)
+            { id: 18, name: "Bệnh viện Trưng Vương", tier: 2, rtpa: true, evt: false, lat: 10.7680, lng: 106.6570, phone: "028 3865 6744" },
+            { id: 19, name: "Phòng khám đa khoa Tâm Anh Quận 7", tier: 2, rtpa: true, evt: false, lat: 10.7410, lng: 106.7110, phone: "028 7102 6789" },
+            { id: 20, name: "Bệnh viện Đa khoa Vũng Tàu", tier: 2, rtpa: true, evt: false, lat: 10.3640, lng: 107.0980, phone: "0254 3832 667" },
+            { id: 21, name: "Bệnh viên đa khoa Bình Chánh", tier: 2, rtpa: true, evt: false, lat: 10.7010, lng: 106.5700, phone: "028 3760 2895" },
+            { id: 22, name: "Bệnh viện Đa khoa tư nhân Triều An", tier: 2, rtpa: true, evt: false, lat: 10.7480, lng: 106.6180, phone: "028 3750 9999" },
+            { id: 23, name: "Bệnh viện Đa khoa khu Vực Hóc Môn", tier: 2, rtpa: true, evt: false, lat: 10.8850, lng: 106.5940, phone: "028 3891 4208" },
+            { id: 24, name: "Bệnh viện Đa khoa Bình Dương", tier: 2, rtpa: true, evt: false, lat: 10.9810, lng: 106.6640, phone: "0274 3822 920" },
+            { id: 25, name: "BỆNH VIỆN ĐA KHOA KHU VỰC CỦ CHI", tier: 2, rtpa: true, evt: false, lat: 10.9650, lng: 106.4950, phone: "028 3892 0583" },
+            { id: 26, name: "Bệnh viện Đa khoa Lãnh Binh Thăng", tier: 2, rtpa: true, evt: false, lat: 10.7640, lng: 106.6450, phone: "028 3962 7212" },
+            { id: 27, name: "BỆNH VIỆN ĐA KHOA BÌNH TÂN", tier: 2, rtpa: true, evt: false, lat: 10.7620, lng: 106.6080, phone: "028 3750 8888" },
+            { id: 28, name: "Bệnh viện Lê Văn Thịnh", tier: 2, rtpa: true, evt: false, lat: 10.7870, lng: 106.7650, phone: "028 3743 2072" },
+            { id: 29, name: "Bệnh viện Đa khoa Quốc tế Becamex", tier: 2, rtpa: true, evt: false, lat: 10.9230, lng: 106.7020, phone: "0274 3681 681" },
+            { id: 30, name: "Bệnh viện An Bình", tier: 2, rtpa: true, evt: false, lat: 10.7520, lng: 106.6740, phone: "028 3923 4359" },
+            { id: 31, name: "Bệnh viện Đa khoa Bà Rịa", tier: 2, rtpa: true, evt: false, lat: 10.5050, lng: 107.1680, phone: "0254 3822 250" },
+            { id: 32, name: "Bệnh viện Nguyễn Trãi", tier: 2, rtpa: true, evt: false, lat: 10.7580, lng: 106.6790, phone: "028 3923 5020" },
+            { id: 33, name: "BỆNH VIỆN TIM TÂM ĐỨC", tier: 2, rtpa: true, evt: false, lat: 10.7300, lng: 106.7080, phone: "028 5411 0036" },
+            { id: 34, name: "Bệnh viện đa khoa Quốc Tế Hoàn Mỹ Thủ Đức", tier: 2, rtpa: true, evt: false, lat: 10.8750, lng: 106.7450, phone: "1900 0119" },
+            { id: 35, name: "Bệnh viện đa khoa Chánh Hưng", tier: 2, rtpa: true, evt: false, lat: 10.7450, lng: 106.6650, phone: "028 3850 1234" },
+            { id: 36, name: "Bệnh viện Nhi Đồng 1", tier: 2, rtpa: true, evt: false, lat: 10.7625, lng: 106.6670, phone: "028 3927 1119" },
+
+            // TẦNG 1 (51 cơ sở)
+            { id: 37, name: "Bệnh viện Đa khoa Bình Phú", tier: 1, rtpa: false, evt: false, lat: 10.740, lng: 106.630, phone: "1900 1234" },
+            { id: 38, name: "BỆNH VIỆN ĐA KHOA KHÁNH HỘI", tier: 1, rtpa: false, evt: false, lat: 10.760, lng: 106.705, phone: "1900 1234" },
+            { id: 39, name: "BV chuyên khoa răng hàm mặt Mỹ Thiện", tier: 1, rtpa: false, evt: false, lat: 10.770, lng: 106.680, phone: "1900 1234" },
+            { id: 40, name: "Bệnh viện Mắt Sài Gòn Bình Dương", tier: 1, rtpa: false, evt: false, lat: 10.950, lng: 106.680, phone: "1900 1234" },
+            { id: 41, name: "Bệnh viện thẩm mỹ Kangam Sài Gòn", tier: 1, rtpa: false, evt: false, lat: 10.780, lng: 106.690, phone: "1900 1234" },
+            { id: 42, name: "BỆNH VIỆN ĐA KHOA TÂN HƯNG", tier: 1, rtpa: false, evt: false, lat: 10.745, lng: 106.695, phone: "1900 1234" },
+            { id: 43, name: "Bệnh viện Thân Dân", tier: 1, rtpa: false, evt: false, lat: 10.750, lng: 106.650, phone: "1900 1234" },
+            { id: 44, name: "Bệnh viện Ngoại khoa Sante", tier: 1, rtpa: false, evt: false, lat: 10.790, lng: 106.710, phone: "1900 1234" },
+            { id: 45, name: "Bệnh viện đa khoa Mỹ Phước", tier: 1, rtpa: false, evt: false, lat: 11.050, lng: 106.600, phone: "1900 1234" },
+            { id: 46, name: "Bệnh viện Thẩm mỹ Sài Gòn Young", tier: 1, rtpa: false, evt: false, lat: 10.775, lng: 106.685, phone: "1900 1234" },
+            { id: 47, name: "Bệnh viện Đa khoa Phú Nhuận", tier: 1, rtpa: false, evt: false, lat: 10.800, lng: 106.680, phone: "1900 1234" },
+            { id: 48, name: "BVĐK HOÀN HẢO", tier: 1, rtpa: false, evt: false, lat: 10.880, lng: 106.750, phone: "1900 1234" },
+            { id: 49, name: "BỆNH VIỆN Y HỌC CỔ TRUYỀN TPHCM", tier: 1, rtpa: false, evt: false, lat: 10.785, lng: 106.685, phone: "028 3932 0250" },
+            { id: 50, name: "Bệnh viện An Sinh", tier: 1, rtpa: false, evt: false, lat: 10.795, lng: 106.680, phone: "028 3845 7777" },
+            { id: 51, name: "Bệnh viện Đa khoa Gò Vấp", tier: 1, rtpa: false, evt: false, lat: 10.835, lng: 106.666, phone: "028 3894 2641" },
+            { id: 52, name: "Bệnh viện Đa khoa Bình Thạnh", tier: 1, rtpa: false, evt: false, lat: 10.806, lng: 106.700, phone: "028 3511 2958" },
+            { id: 53, name: "Bệnh viện Phục Hồi Chức Năng Bình Dương", tier: 1, rtpa: false, evt: false, lat: 10.970, lng: 106.660, phone: "1900 1234" },
+            { id: 54, name: "Bệnh viện Đa khoa Củ Chi", tier: 1, rtpa: false, evt: false, lat: 10.990, lng: 106.480, phone: "028 3792 5115" },
+            { id: 55, name: "Bệnh viện Đa khoa Tân Phú", tier: 1, rtpa: false, evt: false, lat: 10.793, lng: 106.626, phone: "028 5408 8924" },
+            { id: 56, name: "Viện Tim", tier: 1, rtpa: false, evt: false, lat: 10.776, lng: 106.666, phone: "028 3865 1586" },
+            { id: 57, name: "Bệnh viện Thuận Mỹ TDM", tier: 1, rtpa: false, evt: false, lat: 10.980, lng: 106.670, phone: "1900 1234" },
+            { id: 58, name: "BV Tạo hình thẩm mỹ AVA Văn Lang", tier: 1, rtpa: false, evt: false, lat: 10.770, lng: 106.690, phone: "1900 1234" },
+            { id: 59, name: "Trung tâm Y tế Khu vực Bàu Bàng", tier: 1, rtpa: false, evt: false, lat: 11.230, lng: 106.610, phone: "1900 1234" },
+            { id: 60, name: "BV Quốc tế Chấn Thương Chỉnh Hình SG", tier: 1, rtpa: false, evt: false, lat: 10.780, lng: 106.680, phone: "028 3932 1000" },
+            { id: 61, name: "Bệnh viện đa khoa Vạn Phước", tier: 1, rtpa: false, evt: false, lat: 10.985, lng: 106.685, phone: "1900 1234" },
+            { id: 62, name: "Bệnh viện Lê Văn Việt", tier: 1, rtpa: false, evt: false, lat: 10.842, lng: 106.790, phone: "028 3897 3628" },
+            { id: 63, name: "Bệnh viện Đa khoa Trung Mỹ Tây", tier: 1, rtpa: false, evt: false, lat: 10.860, lng: 106.610, phone: "1900 1234" },
+            { id: 64, name: "Bệnh viện Giao thông vận tải tp. HCM", tier: 1, rtpa: false, evt: false, lat: 10.760, lng: 106.660, phone: "1900 1234" },
+            { id: 65, name: "Bệnh viện Vạn Phúc City", tier: 1, rtpa: false, evt: false, lat: 10.840, lng: 106.710, phone: "1900 1234" },
+            { id: 66, name: "BV Đa khoa Châu Thành Nam Tân Uyên", tier: 1, rtpa: false, evt: false, lat: 11.060, lng: 106.810, phone: "1900 1234" },
+            { id: 67, name: "BỆNH VIỆN QUỐC TẾ MỸ", tier: 1, rtpa: false, evt: false, lat: 10.795, lng: 106.745, phone: "028 3910 9999" },
+            { id: 68, name: "Bệnh viện Đa khoa Phương Nam", tier: 1, rtpa: false, evt: false, lat: 10.760, lng: 106.670, phone: "1900 1234" },
+            { id: 69, name: "BV PHCN - Điều trị bệnh nghề nghiệp", tier: 1, rtpa: false, evt: false, lat: 10.745, lng: 106.665, phone: "028 3858 1416" },
+            { id: 70, name: "Viện Y dược học dân tộc", tier: 1, rtpa: false, evt: false, lat: 10.795, lng: 106.675, phone: "028 3844 3047" },
+            { id: 71, name: "Bệnh viện Tâm Thần", tier: 1, rtpa: false, evt: false, lat: 10.755, lng: 106.675, phone: "028 3923 4675" },
+            { id: 72, name: "Bệnh viện Hoàn Mỹ Bình Dương", tier: 1, rtpa: false, evt: false, lat: 10.980, lng: 106.660, phone: "1900 1234" },
+            { id: 73, name: "BỆNH VIỆN ĐA KHOA SÀI GÒN BÌNH DƯƠNG", tier: 1, rtpa: false, evt: false, lat: 10.975, lng: 106.665, phone: "1900 1234" },
+            { id: 74, name: "Bệnh viện Mắt Bà Rịa - Vũng Tàu", tier: 1, rtpa: false, evt: false, lat: 10.490, lng: 107.170, phone: "1900 1234" },
+            { id: 75, name: "Trung tâm y tế khu vực Phú Giáo", tier: 1, rtpa: false, evt: false, lat: 11.290, lng: 106.770, phone: "1900 1234" },
+            { id: 76, name: "TTyt khu vực Bắc Tân Uyên", tier: 1, rtpa: false, evt: false, lat: 11.130, lng: 106.840, phone: "1900 1234" },
+            { id: 77, name: "BV Sức khỏe Tâm thần Bà Rịa - Vũng Tàu", tier: 1, rtpa: false, evt: false, lat: 10.510, lng: 107.160, phone: "1900 1234" },
+            { id: 78, name: "Bệnh viện đa khoa Tâm Trí Sài Gòn", tier: 1, rtpa: false, evt: false, lat: 10.830, lng: 106.630, phone: "028 6260 1100" },
+            { id: 79, name: "Bệnh viện Nhân Ái", tier: 1, rtpa: false, evt: false, lat: 11.330, lng: 106.910, phone: "1900 1234" },
+            { id: 80, name: "Trung tâm y tế Khu vực Phú Mỹ", tier: 1, rtpa: false, evt: false, lat: 10.580, lng: 107.050, phone: "1900 1234" },
+            { id: 81, name: "Bệnh viện Truyền máu Huyết học", tier: 1, rtpa: false, evt: false, lat: 10.760, lng: 106.670, phone: "028 3957 1342" },
+            { id: 82, name: "Bệnh viện Đa Khoa Gia Định", tier: 1, rtpa: false, evt: false, lat: 10.800, lng: 106.690, phone: "1900 1234" },
+            { id: 83, name: "Trung tâm Y tế khu vực Tân Uyên", tier: 1, rtpa: false, evt: false, lat: 11.040, lng: 106.820, phone: "1900 1234" },
+            { id: 84, name: "Bệnh viện Đa khoa Nhà Bè", tier: 1, rtpa: false, evt: false, lat: 10.662, lng: 106.736, phone: "028 3777 0045" },
+            { id: 85, name: "Bệnh viện Đa khoa Tân Định", tier: 1, rtpa: false, evt: false, lat: 10.790, lng: 106.690, phone: "1900 1234" },
+            { id: 86, name: "BỆNH VIỆN ĐỨC KHANG", tier: 1, rtpa: false, evt: false, lat: 10.750, lng: 106.640, phone: "1900 1234" },
+            { id: 87, name: "Bệnh viện đa khoa Nguyễn Thị Thập", tier: 1, rtpa: false, evt: false, lat: 10.740, lng: 106.710, phone: "1900 1234" }
+        ];
+
+        hospitalsData.forEach(h => {
+            h.currentStatus = Math.random() > 0.8 ? 1 : 0;
+            h.incidentNote = "";
+            h.manualOverride = false;
+        });
+
+        // --- 2. BIẾN TOÀN CỤC & KHỞI TẠO BẢN ĐỒ ---
+        let currentUserLat = null;
+        let currentUserLng = null;
+        let routingControl = null;
+        let loggedInUser = null; 
+        
+        const map = L.map('map', { zoomControl: false }).setView([10.8231, 106.6297], 10);
+        
+        // Điều chỉnh vị trí nút Zoom trên Mobile cho đỡ vướng
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Fix lỗi map khi màn hình điện thoại xoay ngang dọc hoặc chia layout
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
+        });
+
+        let markers = [];
+        let activeFilters = { tier: 'all', rtpa: false, evt: false };
+
+        // --- 3. CÁC HÀM XỬ LÝ (Auth, Routing, User Location) ---
+        function initLoginOptions() {
+            const select = document.getElementById('login-account');
+            select.innerHTML = '<option value="admin" class="font-bold">Quản trị viên (Admin Hệ Thống 115)</option>';
+            hospitalsData.forEach(h => {
+                select.innerHTML += `<option value="${h.id}">Bệnh viện: ${h.name}</option>`;
+            });
+        }
+        initLoginOptions();
+
+        window.openLoginModal = function() { document.getElementById('login-modal').classList.remove('hidden'); };
+        window.closeLoginModal = function() { document.getElementById('login-modal').classList.add('hidden'); };
+
+        window.handleLogin = function() {
+            const accType = document.getElementById('login-account').value;
+            const pass = document.getElementById('login-pass').value;
+
+            if (pass !== '123') {
+                alert("Mật khẩu không đúng! (Gợi ý: Mật khẩu thử nghiệm là '123')");
+                return;
+            }
+
+            if (accType === 'admin') {
+                loggedInUser = { role: 'admin', name: 'Admin Điều phối 115' };
+            } else {
+                const hId = parseInt(accType);
+                const hospital = hospitalsData.find(h => h.id === hId);
+                loggedInUser = { role: 'hospital', id: hId, name: hospital.name };
+            }
+
+            closeLoginModal();
+            updateAuthUI();
+            renderData();
+        };
+
+        window.handleLogout = function() {
+            loggedInUser = null;
+            updateAuthUI();
+            renderData();
+        };
+
+        function updateAuthUI() {
+            const btnLogin = document.getElementById('btn-login');
+            const userInfo = document.getElementById('user-info');
+            const tierFilter = document.getElementById('filter-tier');
+
+            if (loggedInUser) {
+                btnLogin.innerHTML = `<i class="fa-solid fa-right-from-bracket md:mr-2"></i><span class="hidden md:inline">Đăng xuất</span>`;
+                btnLogin.onclick = handleLogout;
+                btnLogin.classList.replace('bg-blue-600', 'bg-red-600');
+                btnLogin.classList.replace('hover:bg-blue-700', 'hover:bg-red-700');
+                
+                userInfo.innerHTML = `<div class="text-[10px] text-slate-400">Xin chào,</div><div class="font-bold text-green-400 text-xs md:text-sm truncate max-w-[100px] md:max-w-[200px]">${loggedInUser.name}</div>`;
+                userInfo.classList.remove('hidden');
+
+                // Hiển thị lại Tầng 1 cho bác sĩ/admin
+                Array.from(tierFilter.options).forEach(opt => {
+                    if (opt.value === '1') opt.style.display = 'block';
+                });
+            } else {
+                btnLogin.innerHTML = `<i class="fa-solid fa-user-lock md:mr-2"></i><span class="hidden md:inline">Đăng nhập</span>`;
+                btnLogin.onclick = openLoginModal;
+                btnLogin.classList.replace('bg-red-600', 'bg-blue-600');
+                btnLogin.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
+                
+                userInfo.classList.add('hidden');
+
+                // Ẩn Tầng 1 đối với người dân
+                Array.from(tierFilter.options).forEach(opt => {
+                    if (opt.value === '1') opt.style.display = 'none';
+                });
+                
+                // Nếu đang lọc Tầng 1 thì tự reset
+                if (activeFilters.tier === '1') {
+                    activeFilters.tier = 'all';
+                    tierFilter.value = 'all';
+                }
+            }
+        }
+
+        window.showRoute = function(destLat, destLng) {
+            if (!currentUserLat || !currentUserLng) {
+                alert("Hệ thống chưa xác định được vị trí của bạn. Vui lòng bấm vào biểu tượng Tâm ngắm để lấy vị trí.");
+                return;
+            }
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+            try {
+                routingControl = L.Routing.control({
+                    waypoints: [ L.latLng(currentUserLat, currentUserLng), L.latLng(destLat, destLng) ],
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    show: false,
+                    fitSelectedRoutes: true,
+                    lineOptions: { styles: [{color: '#8b5cf6', opacity: 0.8, weight: 5}] },
+                    createMarker: function() { return null; }
+                }).addTo(map);
+            } catch(e) { console.log("Lỗi tải bản đồ chỉ đường: ", e); }
+        };
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        let userMarker = null;
+        
+        function initUserLocation() {
+            const btnReLocate = document.getElementById('btn-re-locate');
+            if(btnReLocate) {
+                btnReLocate.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-lg"></i>';
+            }
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    currentUserLat = position.coords.latitude;
+                    currentUserLng = position.coords.longitude;
+                    
+                    if(btnReLocate) btnReLocate.innerHTML = '<i class="fa-solid fa-location-crosshairs text-lg"></i>';
+
+                    hospitalsData.forEach(h => {
+                        h.distance = calculateDistance(currentUserLat, currentUserLng, h.lat, h.lng);
+                    });
+
+                    const userIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `
+                            <div class="relative flex justify-center items-center w-8 h-8">
+                                <span class="absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75 animate-ping"></span>
+                                <span class="relative inline-flex rounded-full h-8 w-8 bg-purple-600 border-2 border-white shadow-lg justify-center items-center text-white">
+                                    <i class="fa-solid fa-user text-sm"></i>
+                                </span>
+                            </div>
+                        `,
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16]
+                    });
+                    
+                    if (userMarker) map.removeLayer(userMarker);
+                    userMarker = L.marker([currentUserLat, currentUserLng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map)
+                        .bindPopup('<div class="font-bold text-sm text-purple-700"><i class="fa-solid fa-street-view mr-1"></i>Vị trí hiện tại của bạn</div>');
+                    
+                    map.flyTo([currentUserLat, currentUserLng], 13, { duration: 1.5 });
+                    
+                    setTimeout(() => { if (userMarker) userMarker.openPopup(); }, 1500);
+                    renderData();
+
+                }, (error) => {
+                    console.log("Không thể truy cập vị trí người dùng: ", error);
+                    alert("Không thể lấy tọa độ GPS chính xác. Hãy kiểm tra xem bạn đã bật Dịch vụ định vị (Location) trên thiết bị chưa.");
+                    if(btnReLocate) btnReLocate.innerHTML = '<i class="fa-solid fa-location-crosshairs text-red-500 text-lg"></i>';
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,           
+                    maximumAge: 0             
+                });
+            } else {
+                alert("Trình duyệt hoặc thiết bị của bạn không hỗ trợ định vị.");
+                if(btnReLocate) btnReLocate.innerHTML = '<i class="fa-solid fa-location-crosshairs text-lg"></i>';
+            }
+        }
+
+        document.getElementById('btn-re-locate').addEventListener('click', () => {
+            initUserLocation();
+        });
+
+        function createCustomIcon(hospital) {
+            let tierClass = hospital.tier === 3 ? 'marker-tier-3' : 
+                            hospital.tier === 2 ? 'marker-tier-2' : 'marker-tier-1';
+            
+            let statusClass = '';
+            if (hospital.currentStatus === 2) {
+                statusClass = 'marker-status-2';
+            } else if (hospital.currentStatus === 1) {
+                statusClass = 'marker-status-1';
+            } else {
+                statusClass = 'marker-status-0';
+            }
+
+            return L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="custom-marker ${tierClass} ${statusClass}" style="width: 26px; height: 26px;">${hospital.tier}</div>`,
+                iconSize: [26, 26],
+                iconAnchor: [13, 13]
+            });
+        }
+
+        // --- HÀM RENDER (ĐÃ ĐƯỢC CHỈNH SỬA THUẬT TOÁN) ---
+        function renderData() {
+            markers.forEach(m => map.removeLayer(m.marker));
+            markers = [];
+            
+            const listContainer = document.getElementById('hospital-list');
+            listContainer.innerHTML = '';
+
+            let displayData = [...hospitalsData];
+
+            // 1. Kiểm tra Quyền (Khách chỉ thấy tầng 2 và 3)
+            if (!loggedInUser) {
+                displayData = displayData.filter(h => h.tier >= 2);
+            }
+
+            // 2. Lọc theo tùy chọn UI
+            if (activeFilters.tier !== 'all') {
+                displayData = displayData.filter(h => h.tier.toString() === activeFilters.tier);
+            }
+            if (activeFilters.rtpa) {
+                displayData = displayData.filter(h => h.rtpa);
+            }
+            if (activeFilters.evt) {
+                displayData = displayData.filter(h => h.evt);
+            }
+
+            let nearestPriorityHospital = null;
+
+            // 3. Sắp xếp và Tìm Bệnh viện Tầng 2 (Có rtPA) gần nhất
+            if (displayData.length > 0 && displayData[0].distance !== undefined) {
+                // Sắp xếp tất cả theo khoảng cách
+                displayData.sort((a, b) => a.distance - b.distance);
+                
+                // Trích xuất ưu tiên
+                nearestPriorityHospital = displayData.find(h => h.tier === 2 && h.rtpa === true);
+                if (nearestPriorityHospital) {
+                    displayData = displayData.filter(h => h.id !== nearestPriorityHospital.id);
+                    displayData.unshift(nearestPriorityHospital); // Ghim lên đầu
+                }
+            }
+
+            // 4. Cập nhật con số đếm
+            const totalBase = !loggedInUser ? hospitalsData.filter(h => h.tier >= 2).length : hospitalsData.length;
+            document.getElementById('total-active').innerText = `${displayData.length}/${totalBase}`;
+
+            // 5. Kết xuất giao diện (Render)
+            displayData.forEach(hospital => {
+                const marker = L.marker([hospital.lat, hospital.lng], { icon: createCustomIcon(hospital) }).addTo(map);
+                
+                let reportBtnHtml = '';
+                if (loggedInUser && (loggedInUser.role === 'admin' || (loggedInUser.role === 'hospital' && loggedInUser.id === hospital.id))) {
+                    reportBtnHtml = `<button class="flex-1 min-w-[70px] bg-yellow-500 text-white text-[11px] py-1.5 px-1 rounded hover:bg-yellow-600 transition-colors shadow-sm" onclick="openUpdateModal(${hospital.id})"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Báo cáo</button>`;
+                } else if (!loggedInUser) {
+                    reportBtnHtml = `<button class="flex-1 min-w-[70px] bg-gray-200 text-gray-500 text-[11px] py-1.5 px-1 rounded cursor-not-allowed shadow-sm" onclick="alert('Vui lòng Đăng nhập hệ thống.')" title="Yêu cầu Đăng nhập"><i class="fa-solid fa-lock mr-1"></i> Báo cáo</button>`;
+                }
+
+                const statusText = hospital.currentStatus === 0 ? '<span class="text-green-600 font-bold"><i class="fa-solid fa-circle-check"></i> Sẵn sàng nhận bệnh</span>' : 
+                                   hospital.currentStatus === 1 ? '<span class="text-yellow-600 font-bold"><i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý ca cấp cứu</span>' : 
+                                   '<span class="text-red-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Tạm ngưng (Quá tải)</span>';
+
+                const capabilitiesText = `
+                    <div class="flex gap-1.5 mt-2">
+                        <span class="px-1.5 py-0.5 text-[10px] rounded border ${hospital.rtpa ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200'}">Tiêu sợi huyết: ${hospital.rtpa ? 'Có' : 'Không'}</span>
+                        <span class="px-1.5 py-0.5 text-[10px] rounded border ${hospital.evt ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200'}">Can thiệp mạch não: ${hospital.evt ? 'Có' : 'Không'}</span>
+                    </div>
+                `;
+
+                const noteHtml = hospital.incidentNote ? `<div class="mt-2 p-1.5 bg-red-50 border border-red-200 rounded text-red-700 text-[11px] shadow-sm leading-tight"><b><i class="fa-solid fa-circle-exclamation"></i> Ghi chú:</b> ${hospital.incidentNote}</div>` : '';
+
+                const popupContent = `
+                    <div class="p-0 text-left">
+                        <div class="font-bold text-sm mb-0.5 pr-4">${hospital.name}</div>
+                        <div class="text-[11px] text-gray-500 mb-1.5">Tầng điều trị: ${hospital.tier}</div>
+                        <div class="text-[11px] mb-1.5 p-1 bg-gray-50 rounded border">${statusText}</div>
+                        ${noteHtml}
+                        ${capabilitiesText}
+                        <div class="mt-2.5 flex gap-1 flex-wrap">
+                            <a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="flex-1 min-w-[70px] text-center bg-green-600 !text-white text-[11px] py-1.5 px-1 rounded hover:bg-green-700 shadow-sm inline-block no-underline"><i class="fa-solid fa-phone"></i> Gọi</a>
+                            <button class="flex-1 min-w-[70px] bg-sky-500 text-white text-[11px] py-1.5 px-1 rounded hover:bg-sky-600 shadow-sm" onclick="showRoute(${hospital.lat}, ${hospital.lng})"><i class="fa-solid fa-route"></i> Đường đi</button>
+                            ${reportBtnHtml}
+                            ${(loggedInUser && hospital.tier === 3) ? `<button class="w-full mt-1 bg-blue-600 text-white text-[11px] py-1.5 px-1 rounded hover:bg-blue-700 shadow-sm" onclick="alert('Mô phỏng hội chẩn từ xa với ${hospital.name}')"><i class="fa-solid fa-video mr-1"></i> Hội chẩn từ xa</button>` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                markers.push({ id: hospital.id, marker: marker });
+
+                const tierColor = hospital.tier === 3 ? 'bg-red-100 text-red-700 border-red-200' : 
+                                  hospital.tier === 2 ? 'bg-orange-100 text-orange-700 border-orange-200' : 
+                                  'bg-blue-100 text-blue-700 border-blue-200';
+                
+                const statusDot = hospital.currentStatus === 0 ? 'bg-green-500' : 
+                                  hospital.currentStatus === 1 ? 'bg-yellow-500' : 'bg-red-500 animate-pulse';
+
+                const noteIcon = hospital.incidentNote ? `<i class="fa-solid fa-circle-exclamation text-red-500 ml-1" title="${hospital.incidentNote}"></i>` : '';
+
+                const isNearestPriority = (hospital === nearestPriorityHospital && activeFilters.tier === 'all');
+                
+                const itemClasses = isNearestPriority 
+                    ? 'p-2.5 md:p-3 mb-3 border-2 border-green-500 rounded-lg bg-green-50 shadow-md cursor-pointer transition-colors relative' 
+                    : 'p-2.5 md:p-3 mb-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors bg-white';
+
+                const priorityBadge = isNearestPriority 
+                    ? `<div class="bg-green-600 text-white text-[10px] md:text-[11px] font-bold px-3 py-1.5 rounded-t-[6px] -mx-2.5 md:-mx-3 -mt-2.5 md:-mt-3 mb-2 flex items-center shadow-sm">
+                        <i class="fa-solid fa-truck-medical mr-2 animate-pulse"></i> Tầng 2 (Tiêu sợi huyết) có thể tiếp cận gần nhất
+                       </div>` 
+                    : '';
+
+                const listItem = document.createElement('div');
+                listItem.className = itemClasses;
+                
+                const distanceHtml = hospital.distance !== undefined ? `<span class="text-[10px] font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100"><i class="fa-solid fa-location-arrow mr-1"></i>${hospital.distance.toFixed(1)} km</span>` : '';
+
+                listItem.innerHTML = `
+                    ${priorityBadge}
+                    <div class="flex justify-between items-start mb-1.5">
+                        <h3 class="font-medium text-xs md:text-sm text-gray-800 line-clamp-1 pr-2">${hospital.name} ${noteIcon}</h3>
+                        <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${statusDot} mt-0.5 flex-shrink-0 border border-white shadow-sm" title="Trạng thái"></div>
+                    </div>
+                    <div class="flex items-center gap-1.5 mb-2 flex-wrap">
+                        <span class="text-[9px] md:text-[10px] px-1.5 py-0.5 rounded border ${tierColor}">Tầng ${hospital.tier}</span>
+                        ${distanceHtml}
+                        <a href="tel:${hospital.phone.replace(/\s+/g, '')}" onclick="event.stopPropagation()" class="text-[10px] text-green-600 hover:text-green-800 hover:underline font-medium"><i class="fa-solid fa-phone-volume mr-0.5"></i> ${hospital.phone}</a>
+                    </div>
+                    <div class="flex text-[9px] md:text-[10px] text-gray-500 gap-3 border-t pt-1.5">
+                        <span><i class="fa-solid fa-syringe mr-1 ${hospital.rtpa ? 'text-green-500' : 'text-gray-300'}"></i>Tiêu sợi huyết</span>
+                        <span><i class="fa-solid fa-microscope mr-1 ${hospital.evt ? 'text-green-500' : 'text-gray-300'}"></i>Can thiệp mạch não</span>
+                    </div>
+                `;
+                
+                listItem.onclick = () => {
+                    if(window.innerWidth < 768) {
+                        window.scrollTo({top: 0, behavior: 'smooth'});
+                    }
+                    map.flyTo([hospital.lat, hospital.lng], 14, { duration: 1 });
+                    marker.openPopup();
+                    showRoute(hospital.lat, hospital.lng);
+                };
+
+                listContainer.appendChild(listItem);
+            });
+
+            if(displayData.length === 0) {
+                listContainer.innerHTML = '<div class="text-center text-sm text-gray-400 p-4">Không có cơ sở nào phù hợp.</div>';
+            }
+        }
+
+        // --- 4. SỰ KIỆN GIAO DIỆN LỌC ---
+        document.getElementById('filter-tier').addEventListener('change', (e) => {
+            activeFilters.tier = e.target.value;
+            renderData();
+        });
+
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const capability = e.target.dataset.capability;
+                activeFilters[capability] = !activeFilters[capability];
+                
+                if (activeFilters[capability]) {
+                    e.target.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
+                    e.target.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+                } else {
+                    e.target.classList.add('bg-white', 'text-gray-700', 'border-gray-300');
+                    e.target.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                }
+                renderData();
+            });
+        });
+
+        // --- CÁC HÀM XỬ LÝ SỰ CỐ (MODAL) ---
+        window.openUpdateModal = function(id) {
+            const hospital = hospitalsData.find(h => h.id === id);
+            if (!hospital) return;
+
+            document.getElementById('modal-hospital-id').value = hospital.id;
+            document.getElementById('modal-hospital-name').innerText = hospital.name;
+            document.getElementById('modal-status').value = hospital.currentStatus;
+            document.getElementById('modal-note').value = hospital.incidentNote || '';
+
+            document.getElementById('update-modal').classList.remove('hidden');
+            map.closePopup(); 
+        };
+
+        window.closeUpdateModal = function() {
+            document.getElementById('update-modal').classList.add('hidden');
+        };
+
+        window.saveUpdateStatus = function() {
+            const id = parseInt(document.getElementById('modal-hospital-id').value);
+            const status = parseInt(document.getElementById('modal-status').value);
+            const note = document.getElementById('modal-note').value;
+
+            const hospital = hospitalsData.find(h => h.id === id);
+            if (hospital) {
+                hospital.currentStatus = status;
+                hospital.incidentNote = note;
+                hospital.manualOverride = true; 
+            }
+
+            closeUpdateModal();
+            renderData(); 
+        };
+
+        // --- 5. MÔ PHỎNG THỜI GIAN THỰC ---
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN');
+        }, 1000);
+
+        setInterval(() => {
+            let changed = false;
+            hospitalsData.forEach(h => {
+                if (h.manualOverride) return;
+
+                if (Math.random() < 0.05) {
+                    if (h.tier === 3) {
+                        h.currentStatus = Math.random() > 0.6 ? 2 : (Math.random() > 0.5 ? 1 : 0);
+                    } else {
+                        h.currentStatus = Math.random() > 0.8 ? 1 : 0;
+                    }
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                let openPopupId = null;
+                markers.forEach(m => {
+                    if (m.marker.isPopupOpen()) { openPopupId = m.id; }
+                });
+                
+                const center = map.getCenter();
+                const zoom = map.getZoom();
+
+                renderData(); 
+
+                map.setView(center, zoom, {animate: false});
+                
+                if (openPopupId !== null) {
+                    const activeMarker = markers.find(m => m.id === openPopupId);
+                    if (activeMarker) activeMarker.marker.openPopup();
+                }
+            }
+        }, 5000); 
+
+        // Khởi chạy UI trước (Sẽ cấu hình để ẩn sẵn Tầng 1)
+        updateAuthUI();
+        
+        // Khởi chạy Data
+        renderData();
+
+        // Lấy vị trí ngay khi vào trang
+        initUserLocation();
+
+    </script>
+</body>
+</html>
