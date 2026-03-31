@@ -925,6 +925,12 @@
                 `;
                 
                 marker.bindPopup(popupContent);
+                
+                // Tự động bật chỉ đường khi click vào ghim trên bản đồ
+                marker.on('click', () => {
+                    showRoute(hospital.lat, hospital.lng);
+                });
+                
                 markers.push({ id: hospital.id, marker: marker });
 
                 const tierColor = hospital.tier === 3 ? 'bg-red-100 text-red-700 border-red-200' : 
@@ -976,6 +982,7 @@
                     }
                     map.flyTo([hospital.lat, hospital.lng], 14, { duration: 1 });
                     marker.openPopup();
+                    showRoute(hospital.lat, hospital.lng); // Tự động bật chỉ đường khi click vào list
                 };
 
                 listContainer.appendChild(listItem);
