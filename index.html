@@ -171,11 +171,11 @@
         </div>
     </header>
 
-    <!-- Main Content Layout -->
+    <!-- Main Content Layout (Tỉ lệ 30% Danh sách - 70% Bản đồ) -->
     <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
         
-        <!-- Sidebar -->
-        <aside class="w-full md:w-[420px] flex-1 md:flex-none h-auto md:h-full bg-white shadow-xl z-10 flex flex-col flex-shrink-0 order-2 md:order-1 border-t md:border-t-0 md:border-r border-gray-200">
+        <!-- Sidebar (35% Height on Mobile, 30% Width on Desktop) -->
+        <aside class="w-full md:w-[30%] h-[35%] md:h-full bg-white shadow-xl z-10 flex flex-col flex-shrink-0 order-2 md:order-1 border-t md:border-t-0 md:border-r border-gray-200">
             <!-- Thống kê nhanh -->
             <div class="hidden md:block p-4 border-b border-gray-100 bg-slate-50">
                 <div class="grid grid-cols-3 gap-2 text-center">
@@ -232,8 +232,8 @@
             </div>
         </aside>
 
-        <!-- Map Container -->
-        <main class="w-full md:flex-1 relative h-[45vh] md:h-auto order-1 md:order-2 flex-shrink-0 z-[0]">
+        <!-- Map Container (65% Height on Mobile, 70% Width on Desktop) -->
+        <main class="w-full md:w-[70%] relative h-[65%] md:h-full order-1 md:order-2 flex-shrink-0 z-[0]">
             <div id="map"></div>
             
             <!-- Nút Hủy Dẫn Đường -->
@@ -261,29 +261,29 @@
             </div>
 
             <!-- Cẩm nang Đột quỵ (Chỉ hiển thị cho người dùng thông thường) -->
-            <div id="stroke-guide-banner" class="absolute bottom-6 left-4 right-4 md:left-auto md:right-[310px] lg:right-[330px] z-[1000] bg-[#e6f4e1] p-1.5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-green-300 transition-all duration-300 w-auto max-w-[280px] md:max-w-[250px] mx-auto md:mx-0 hidden">
+            <div id="stroke-guide-banner" class="absolute bottom-6 left-4 right-4 md:left-auto md:right-[310px] lg:right-[330px] z-[1000] bg-[#e6f4e1] p-1.5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-green-300 transition-all duration-300 w-auto max-w-[180px] sm:max-w-[200px] md:max-w-[250px] mx-auto md:mx-0 hidden">
                 <!-- Sử dụng ảnh Picture2.png (Tự động thu nhỏ theo max-w) -->
                 <img src="Picture2.png" alt="Cẩm nang nhận biết đột quỵ FAST" class="w-full h-auto object-contain rounded-lg" onerror="this.style.display='none'; document.getElementById('stroke-guide-fallback').classList.remove('hidden');">
                 
                 <!-- Fallback HTML (Dự phòng khi không tải được file ảnh) -->
-                <div id="stroke-guide-fallback" class="hidden bg-[#e6f4e1] p-2 text-center rounded-lg">
-                    <h4 class="text-red-600 font-bold text-[11px] md:text-xs mb-2 uppercase tracking-wide">Tranh thủ từng giây<br>Cứu ngay đột quỵ</h4>
-                    <div class="flex justify-center gap-2 md:gap-3 mb-2">
+                <div id="stroke-guide-fallback" class="hidden bg-[#e6f4e1] p-1.5 md:p-2 text-center rounded-lg">
+                    <h4 class="text-red-600 font-bold text-[9px] md:text-xs mb-1.5 md:mb-2 uppercase tracking-wide">Tranh thủ từng giây<br>Cứu ngay đột quỵ</h4>
+                    <div class="flex justify-center gap-1.5 md:gap-3 mb-1.5 md:mb-2">
                         <div class="text-center">
-                            <div class="bg-blue-100 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-1 text-blue-600 text-base md:text-lg shadow-sm"><i class="fa-regular fa-face-frown-open"></i></div>
-                            <span class="text-[10px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">MÉO</span> cười</span>
+                            <div class="bg-blue-100 w-6 h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 md:mb-1 text-blue-600 text-xs md:text-lg shadow-sm"><i class="fa-regular fa-face-frown-open"></i></div>
+                            <span class="text-[8px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">MÉO</span> cười</span>
                         </div>
                         <div class="text-center">
-                            <div class="bg-blue-100 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-1 text-blue-600 text-base md:text-lg shadow-sm"><i class="fa-solid fa-comment-slash"></i></div>
-                            <span class="text-[10px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">NGỌNG</span> nói</span>
+                            <div class="bg-blue-100 w-6 h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 md:mb-1 text-blue-600 text-xs md:text-lg shadow-sm"><i class="fa-solid fa-comment-slash"></i></div>
+                            <span class="text-[8px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">NGỌNG</span> nói</span>
                         </div>
                         <div class="text-center">
-                            <div class="bg-blue-100 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-1 text-blue-600 text-base md:text-lg shadow-sm"><i class="fa-solid fa-person-falling"></i></div>
-                            <span class="text-[10px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">XUỘI</span> tay</span>
+                            <div class="bg-blue-100 w-6 h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 md:mb-1 text-blue-600 text-xs md:text-lg shadow-sm"><i class="fa-solid fa-person-falling"></i></div>
+                            <span class="text-[8px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">XUỘI</span> tay</span>
                         </div>
                     </div>
-                    <p class="text-blue-900 font-bold text-[10px] md:text-[11px] mb-2">Mau gọi cấp cứu, đi ngay, đừng chờ!</p>
-                    <a href="tel:115" class="bg-red-600 text-white text-base md:text-lg font-black py-1.5 px-6 rounded-full inline-flex items-center gap-2 animate-pulse shadow-md hover:bg-red-700 transition-colors">
+                    <p class="text-blue-900 font-bold text-[8px] md:text-[11px] mb-1.5 md:mb-2">Mau gọi cấp cứu, đi ngay, đừng chờ!</p>
+                    <a href="tel:115" class="bg-red-600 text-white text-xs md:text-lg font-black py-1 px-4 md:py-1.5 md:px-6 rounded-full inline-flex items-center gap-1.5 md:gap-2 animate-pulse shadow-md hover:bg-red-700 transition-colors">
                         <i class="fa-solid fa-phone-volume"></i> Gọi 115
                     </a>
                 </div>
@@ -452,23 +452,25 @@
             { id: 87, name: "Bệnh viện đa khoa Nguyễn Thị Thập", tier: 1, rtpa: false, evt: false, lat: 10.740, lng: 106.710, phone: "1900 1234" }
         ];
 
+        // Khởi tạo trạng thái mô phỏng (Real-time status)
+        // 0: Sẵn sàng, 1: Bận/Có ca nặng, 2: Quá tải
         hospitalsData.forEach(h => {
-            h.currentStatus = Math.random() > 0.8 ? 1 : 0;
-            h.incidentNote = "";
-            h.manualOverride = false;
+            h.currentStatus = Math.random() > 0.8 ? 1 : 0; // 20% cơ sở ban đầu có ca bệnh
+            h.incidentNote = ""; // Thêm trường ghi chú sự cố
+            h.manualOverride = false; // Đánh dấu nếu đã được cập nhật bằng tay
         });
 
         // --- 2. BIẾN TOÀN CỤC & KHỞI TẠO BẢN ĐỒ ---
         let currentUserLat = null;
         let currentUserLng = null;
         let routingControl = null;
-        let loggedInUser = null; 
+        let loggedInUser = null; // null | {role: 'admin', name:...} | {role: 'hospital', id: ..., name:...}
         
         // Quản lý thông báo
         let notificationsList = [];
         let unreadNotifCount = 0;
         
-        const map = L.map('map', { zoomControl: false }).setView([10.8231, 106.6297], 10);
+        const map = L.map('map', { zoomControl: false }).setView([10.8231, 106.6297], 10); // Center TP.HCM
         
         L.control.zoom({ position: 'topright' }).addTo(map);
 
@@ -481,7 +483,7 @@
             map.invalidateSize();
         });
 
-        let markers = [];
+        let markers = []; // Mảng chứa các marker trên bản đồ
         let activeFilters = { tier: 'all', rtpa: false, evt: false, search: '' };
 
         // --- TÍNH NĂNG TOAST & NOTIFICATION HISTORY ---
@@ -894,7 +896,7 @@
                 const capabilitiesText = `
                     <div class="flex gap-1.5 mt-2">
                         <span class="px-1.5 py-0.5 text-[10px] rounded border ${hospital.rtpa ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200'}">Tiêu sợi huyết: ${hospital.rtpa ? 'Có' : 'Không'}</span>
-                        <span class="px-1.5 py-0.5 text-[10px] rounded border ${hospital.evt ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200'}">Can thiệp: ${hospital.evt ? 'Có' : 'Không'}</span>
+                        <span class="px-1.5 py-0.5 text-[10px] rounded border ${hospital.evt ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200'}">Can thiệp mạch não: ${hospital.evt ? 'Có' : 'Không'}</span>
                     </div>
                 `;
 
@@ -936,7 +938,7 @@
 
                 const priorityBadge = isNearestPriority 
                     ? `<div class="bg-green-600 text-white text-[10px] md:text-[11px] font-bold px-3 py-1.5 rounded-t-[6px] -mx-2.5 md:-mx-3 -mt-2.5 md:-mt-3 mb-2 flex items-center shadow-sm">
-                        <i class="fa-solid fa-truck-medical mr-2 animate-pulse"></i> Tuyến ưu tiên gần nhất (Tầng 2 + TSH)
+                        <i class="fa-solid fa-truck-medical mr-2 animate-pulse"></i> Tuyến ưu tiên gần nhất (Tầng 2 + Tiêu sợi huyết)
                        </div>` 
                     : '';
 
