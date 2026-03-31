@@ -174,8 +174,8 @@
     <!-- Main Content Layout (Tỉ lệ 30% Danh sách - 70% Bản đồ) -->
     <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
         
-        <!-- Sidebar (35% Height on Mobile, 30% Width on Desktop) -->
-        <aside class="w-full md:w-[30%] h-[35%] md:h-full bg-white shadow-xl z-10 flex flex-col flex-shrink-0 order-2 md:order-1 border-t md:border-t-0 md:border-r border-gray-200">
+        <!-- Sidebar (40% Height on Mobile, 30% Width on Desktop) -->
+        <aside class="w-full md:w-[30%] h-[40%] md:h-full bg-white shadow-xl z-10 flex flex-col flex-shrink-0 order-2 md:order-1 border-t md:border-t-0 md:border-r border-gray-200">
             <!-- Thống kê nhanh -->
             <div class="hidden md:block p-4 border-b border-gray-100 bg-slate-50">
                 <div class="grid grid-cols-3 gap-2 text-center">
@@ -232,8 +232,8 @@
             </div>
         </aside>
 
-        <!-- Map Container (65% Height on Mobile, 70% Width on Desktop) -->
-        <main class="w-full md:w-[70%] relative h-[65%] md:h-full order-1 md:order-2 flex-shrink-0 z-[0]">
+        <!-- Map Container (60% Height on Mobile, 70% Width on Desktop) -->
+        <main class="w-full md:w-[70%] relative h-[60%] md:h-full order-1 md:order-2 flex-shrink-0 z-[0]">
             <div id="map"></div>
             
             <!-- Nút Hủy Dẫn Đường -->
@@ -729,7 +729,7 @@
             
             // Re-center if user loc exists
             if (currentUserLat) {
-                map.flyTo([currentUserLat, currentUserLng], 12);
+                map.flyTo([currentUserLat, currentUserLng], 14);
             }
         };
 
@@ -781,7 +781,7 @@
                     userMarker = L.marker([currentUserLat, currentUserLng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map)
                         .bindPopup('<div class="font-bold text-sm text-purple-700"><i class="fa-solid fa-street-view mr-1"></i>Vị trí hiện tại của bạn</div>');
                     
-                    map.flyTo([currentUserLat, currentUserLng], 12, { duration: 1.5 });
+                    map.flyTo([currentUserLat, currentUserLng], 14, { duration: 1.5 });
                     
                     setTimeout(() => { if (userMarker) userMarker.openPopup(); }, 1500);
                     renderData();
