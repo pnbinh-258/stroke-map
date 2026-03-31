@@ -237,31 +237,31 @@
             <div id="map"></div>
             
             <!-- Nút Hủy Dẫn Đường -->
-            <button id="btn-clear-route" class="absolute top-4 left-4 z-[1000] bg-white text-red-600 px-3 py-2 rounded-md shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 hidden items-center gap-2 hover:bg-red-50 text-sm font-medium transition-all" onclick="clearRoute()">
+            <button id="btn-clear-route" class="absolute top-4 left-4 md:left-6 z-[1000] bg-white text-red-600 px-3 py-2 rounded-md shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 hidden items-center gap-2 hover:bg-red-50 text-sm font-medium transition-all" onclick="clearRoute()">
                 <i class="fa-solid fa-route-slash"></i> Hủy dẫn đường
             </button>
 
-            <!-- Nút Định vị lại Vị trí -->
-            <button id="btn-re-locate" class="absolute top-4 right-4 md:bottom-6 md:top-auto md:right-auto md:left-6 z-[1000] bg-white w-10 h-10 rounded-full shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 flex items-center justify-center text-blue-600 hover:bg-blue-50 focus:outline-none transition-transform active:scale-95" title="Định vị lại vị trí của tôi">
+            <!-- Nút Định vị lại Vị trí (Dịch xuống tránh nút Zoom trên mobile) -->
+            <button id="btn-re-locate" class="absolute top-20 right-3 md:top-auto md:right-auto md:bottom-6 md:left-6 z-[1000] bg-white w-10 h-10 rounded-full shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 flex items-center justify-center text-blue-600 hover:bg-blue-50 focus:outline-none transition-transform active:scale-95" title="Định vị lại vị trí của tôi">
                 <i class="fa-solid fa-location-crosshairs text-lg"></i>
             </button>
 
-            <!-- Chú thích bản đồ -->
-            <div id="map-legend" class="hidden md:block absolute bottom-6 right-6 z-[1000] bg-white/95 backdrop-blur p-3 rounded-lg shadow-lg border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-700 mb-2">Chú giải</h4>
-                <div class="space-y-2.5 text-xs">
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block border border-gray-200"></span> Tầng 3 (Can thiệp mạch não + Tiêu sợi huyết)</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block border border-gray-200"></span> Tầng 2 (Chỉ Tiêu sợi huyết)</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block border border-gray-200"></span> Tầng 1 (Cấp cứu ban đầu)</div>
-                    <hr class="my-1.5 border-gray-200">
-                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-0 inline-block"></span> Sẵn sàng nhận bệnh</div>
-                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-1 inline-block"></span> Đang xử lý ca cấp cứu (Bận)</div>
-                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-2 inline-block"></span> Quá tải / Tạm ngưng</div>
+            <!-- Chú thích bản đồ (Đã tối ưu kích thước) -->
+            <div id="map-legend" class="hidden md:block absolute bottom-6 right-4 lg:right-6 z-[1000] bg-white/95 backdrop-blur p-2.5 rounded-lg shadow-lg border border-gray-200">
+                <h4 class="text-[10px] md:text-[11px] font-bold text-gray-700 mb-1.5">Chú giải</h4>
+                <div class="space-y-1.5 text-[9px] md:text-[10px]">
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block border border-gray-200"></span> Tầng 3 (Can thiệp mạch não + Tiêu sợi huyết)</div>
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block border border-gray-200"></span> Tầng 2 (Chỉ Tiêu sợi huyết)</div>
+                    <div id="legend-tier-1" class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block border border-gray-200"></span> Tầng 1 (Cấp cứu ban đầu)</div>
+                    <hr class="my-1 border-gray-200">
+                    <div class="flex items-center gap-2 pl-0.5"><span class="w-2 h-2 rounded-full bg-gray-100 border border-white shadow-[0_0_0_2px_#22c55e] inline-block mt-0.5"></span> Sẵn sàng nhận bệnh</div>
+                    <div class="flex items-center gap-2 pl-0.5"><span class="w-2 h-2 rounded-full bg-gray-100 border border-white shadow-[0_0_0_2px_#eab308] inline-block mt-0.5"></span> Đang xử lý ca cấp cứu (Bận)</div>
+                    <div class="flex items-center gap-2 pl-0.5"><span class="w-2 h-2 rounded-full bg-gray-100 border border-white shadow-[0_0_0_2px_#ef4444] inline-block mt-0.5"></span> Quá tải / Tạm ngưng</div>
                 </div>
             </div>
 
-            <!-- Cẩm nang Đột quỵ (Chỉ hiển thị cho người dùng thông thường) -->
-            <div id="stroke-guide-banner" class="absolute bottom-6 left-4 right-4 md:left-auto md:right-[310px] lg:right-[330px] z-[1000] bg-[#e6f4e1] p-1.5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-green-300 transition-all duration-300 w-auto max-w-[180px] sm:max-w-[200px] md:max-w-[250px] mx-auto md:mx-0 hidden">
+            <!-- Cẩm nang Đột quỵ (Căn giữa để không đè lên chú giải trên Z Fold 5) -->
+            <div id="stroke-guide-banner" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[1000] bg-[#e6f4e1] p-1.5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-green-300 transition-all duration-300 w-[180px] sm:w-[200px] md:w-[220px] hidden">
                 <!-- Sử dụng ảnh Picture2.png (Tự động thu nhỏ theo max-w) -->
                 <img src="Picture2.png" alt="Cẩm nang nhận biết đột quỵ FAST" class="w-full h-auto object-contain rounded-lg" onerror="this.style.display='none'; document.getElementById('stroke-guide-fallback').classList.remove('hidden');">
                 
@@ -270,26 +270,26 @@
                     <h4 class="text-red-600 font-bold text-[9px] md:text-xs mb-1.5 md:mb-2 uppercase tracking-wide">Tranh thủ từng giây<br>Cứu ngay đột quỵ</h4>
                     <div class="flex justify-center gap-1.5 md:gap-3 mb-1.5 md:mb-2">
                         <div class="text-center">
-                            <div class="bg-blue-100 w-6 h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 md:mb-1 text-blue-600 text-xs md:text-lg shadow-sm"><i class="fa-regular fa-face-frown-open"></i></div>
-                            <span class="text-[8px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">MÉO</span> cười</span>
+                            <div class="bg-blue-100 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center mx-auto mb-0.5 md:mb-1 text-blue-600 text-xs md:text-sm shadow-sm"><i class="fa-regular fa-face-frown-open"></i></div>
+                            <span class="text-[8px] md:text-[10px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">MÉO</span> cười</span>
                         </div>
                         <div class="text-center">
-                            <div class="bg-blue-100 w-6 h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 md:mb-1 text-blue-600 text-xs md:text-lg shadow-sm"><i class="fa-solid fa-comment-slash"></i></div>
-                            <span class="text-[8px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">NGỌNG</span> nói</span>
+                            <div class="bg-blue-100 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center mx-auto mb-0.5 md:mb-1 text-blue-600 text-xs md:text-sm shadow-sm"><i class="fa-solid fa-comment-slash"></i></div>
+                            <span class="text-[8px] md:text-[10px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">NGỌNG</span> nói</span>
                         </div>
                         <div class="text-center">
-                            <div class="bg-blue-100 w-6 h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 md:mb-1 text-blue-600 text-xs md:text-lg shadow-sm"><i class="fa-solid fa-person-falling"></i></div>
-                            <span class="text-[8px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">XUỘI</span> tay</span>
+                            <div class="bg-blue-100 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center mx-auto mb-0.5 md:mb-1 text-blue-600 text-xs md:text-sm shadow-sm"><i class="fa-solid fa-person-falling"></i></div>
+                            <span class="text-[8px] md:text-[10px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">XUỘI</span> tay</span>
                         </div>
                     </div>
-                    <p class="text-blue-900 font-bold text-[8px] md:text-[11px] mb-1.5 md:mb-2">Mau gọi cấp cứu, đi ngay, đừng chờ!</p>
-                    <a href="tel:115" class="bg-red-600 text-white text-xs md:text-lg font-black py-1 px-4 md:py-1.5 md:px-6 rounded-full inline-flex items-center gap-1.5 md:gap-2 animate-pulse shadow-md hover:bg-red-700 transition-colors">
+                    <p class="text-blue-900 font-bold text-[8px] md:text-[10px] mb-1.5 md:mb-2">Mau gọi cấp cứu, đi ngay, đừng chờ!</p>
+                    <a href="tel:115" class="bg-red-600 text-white text-xs md:text-sm font-black py-1 px-4 md:py-1.5 md:px-5 rounded-full inline-flex items-center gap-1.5 md:gap-2 animate-pulse shadow-md hover:bg-red-700 transition-colors">
                         <i class="fa-solid fa-phone-volume"></i> Gọi 115
                     </a>
                 </div>
 
                 <!-- Nút ẩn banner cho bớt vướng bản đồ -->
-                <button onclick="document.getElementById('stroke-guide-banner').style.display='none'" class="absolute -top-3 -right-3 md:-top-3 md:-left-3 md:right-auto bg-white rounded-full shadow-md border border-gray-200 text-gray-400 hover:text-red-600 w-6 h-6 flex items-center justify-center text-xs transition-colors z-[1010]">
+                <button onclick="document.getElementById('stroke-guide-banner').style.display='none'" class="absolute -top-3 -right-3 bg-white rounded-full shadow-md border border-gray-200 text-gray-400 hover:text-red-600 w-6 h-6 flex items-center justify-center text-xs transition-colors z-[1010]">
                     <i class="fa-solid fa-times"></i>
                 </button>
             </div>
@@ -651,6 +651,7 @@
             const userInfo = document.getElementById('user-info');
             const tierFilter = document.getElementById('filter-tier');
             const strokeGuide = document.getElementById('stroke-guide-banner');
+            const legendTier1 = document.getElementById('legend-tier-1');
 
             if (loggedInUser) {
                 btnLogin.innerHTML = `<i class="fa-solid fa-right-from-bracket md:mr-2"></i><span class="hidden md:inline">Đăng xuất</span>`;
@@ -670,6 +671,9 @@
                     strokeGuide.style.display = 'none';
                     strokeGuide.classList.add('hidden');
                 }
+                // Hiện Chú giải tầng 1
+                if (legendTier1) legendTier1.style.display = 'flex';
+                
             } else {
                 btnLogin.innerHTML = `<i class="fa-solid fa-user-lock md:mr-2"></i><span class="hidden md:inline">Đăng nhập</span>`;
                 btnLogin.onclick = openLoginModal;
@@ -692,6 +696,8 @@
                     strokeGuide.style.display = 'block';
                     strokeGuide.classList.remove('hidden');
                 }
+                // Ẩn Chú giải tầng 1
+                if (legendTier1) legendTier1.style.display = 'none';
             }
         }
 
