@@ -177,19 +177,19 @@
         <!-- Sidebar (40% Height on Mobile, 30% Width on Desktop) -->
         <aside class="w-full md:w-[30%] h-[40%] md:h-full bg-white shadow-xl z-10 flex flex-col flex-shrink-0 order-2 md:order-1 border-t md:border-t-0 md:border-r border-gray-200">
             <!-- Thống kê nhanh -->
-            <div class="hidden md:block p-4 border-b border-gray-100 bg-slate-50">
-                <div class="grid grid-cols-3 gap-2 text-center">
-                    <div class="bg-red-50 rounded p-2 border border-red-100">
-                        <div class="text-xl font-bold text-red-600">17</div>
-                        <div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 3<br>(Can thiệp)</div>
+            <div class="hidden md:block p-3 lg:p-4 border-b border-gray-100 bg-slate-50">
+                <div class="grid grid-cols-3 gap-1.5 lg:gap-2 text-center">
+                    <div class="bg-red-50 rounded p-1.5 lg:p-2 border border-red-100">
+                        <div class="text-lg lg:text-xl font-bold text-red-600">17</div>
+                        <div class="text-[9px] xl:text-[10px] text-gray-600 uppercase mt-1 leading-tight whitespace-nowrap tracking-tighter lg:tracking-normal">Tầng 3<br>(Can thiệp)</div>
                     </div>
-                    <div class="bg-orange-50 rounded p-2 border border-orange-100">
-                        <div class="text-xl font-bold text-orange-600">19</div>
-                        <div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 2<br>(Tiêu sợi huyết)</div>
+                    <div class="bg-orange-50 rounded p-1.5 lg:p-2 border border-orange-100">
+                        <div class="text-lg lg:text-xl font-bold text-orange-600">19</div>
+                        <div class="text-[9px] xl:text-[10px] text-gray-600 uppercase mt-1 leading-tight whitespace-nowrap tracking-tighter lg:tracking-normal">Tầng 2<br>(Tiêu sợi huyết)</div>
                     </div>
-                    <div class="bg-blue-50 rounded p-2 border border-blue-100">
-                        <div class="text-xl font-bold text-blue-600">51</div>
-                        <div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 1<br>(Ban đầu)</div>
+                    <div class="bg-blue-50 rounded p-1.5 lg:p-2 border border-blue-100">
+                        <div class="text-lg lg:text-xl font-bold text-blue-600">51</div>
+                        <div class="text-[9px] xl:text-[10px] text-gray-600 uppercase mt-1 leading-tight whitespace-nowrap tracking-tighter lg:tracking-normal">Tầng 1<br>(Ban đầu)</div>
                     </div>
                 </div>
             </div>
@@ -917,7 +917,6 @@
                         ${capabilitiesText}
                         <div class="mt-2.5 flex gap-1 flex-wrap">
                             <a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="flex-1 min-w-[70px] text-center bg-green-600 !text-white text-[11px] py-1.5 px-1 rounded hover:bg-green-700 shadow-sm inline-block no-underline"><i class="fa-solid fa-phone"></i> Gọi</a>
-                            <button class="flex-1 min-w-[70px] bg-sky-500 text-white text-[11px] py-1.5 px-1 rounded hover:bg-sky-600 shadow-sm" onclick="showRoute(${hospital.lat}, ${hospital.lng})"><i class="fa-solid fa-route"></i> Chỉ đường</button>
                             ${reportBtnHtml}
                             ${(loggedInUser && hospital.tier === 3) ? `<button class="w-full mt-1 bg-blue-600 text-white text-[11px] py-1.5 px-1 rounded hover:bg-blue-700 shadow-sm" onclick="showToast('Mô phỏng tính năng hội chẩn Video Call', 'info')"><i class="fa-solid fa-video mr-1"></i> Hội chẩn từ xa</button>` : ''}
                         </div>
@@ -949,8 +948,12 @@
                     : 'p-2.5 md:p-3 mb-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors bg-white';
 
                 const priorityBadge = isNearestPriority 
-                    ? `<div class="bg-green-600 text-white text-[10px] md:text-[11px] font-bold px-3 py-1.5 rounded-t-[6px] -mx-2.5 md:-mx-3 -mt-2.5 md:-mt-3 mb-2 flex items-center shadow-sm">
-                        <i class="fa-solid fa-truck-medical mr-2 animate-pulse"></i> Tuyến ưu tiên gần nhất (Tầng 2 + Tiêu sợi huyết)
+                    ? `<div class="bg-green-600 text-white text-[10px] md:text-[11px] px-3 py-2 rounded-t-[6px] -mx-2.5 md:-mx-3 -mt-2.5 md:-mt-3 mb-2 flex items-start gap-2 shadow-sm">
+                        <i class="fa-solid fa-truck-medical mt-0.5 animate-pulse text-xs md:text-sm"></i>
+                        <div class="flex flex-col leading-tight">
+                            <span class="font-bold">Tuyến ưu tiên gần nhất</span>
+                            <span class="font-medium text-green-100">(Tầng 2 + Tiêu sợi huyết)</span>
+                        </div>
                        </div>` 
                     : '';
 
