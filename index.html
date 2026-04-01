@@ -5,16 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bản đồ Mạng lưới Đột quỵ khu vực TP.HCM</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
-    <!-- Leaflet Routing Machine CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
-    <!-- Font Awesome cho Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -116,10 +112,8 @@
 </head>
 <body class="h-[100dvh] flex flex-col overflow-hidden">
 
-    <!-- Toast Notifications Container -->
     <div id="toast-container" class="fixed top-20 right-4 z-[5000] flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Header / Navbar (Responsive) -->
     <header class="bg-slate-900 text-white p-3 md:p-4 shadow-md flex justify-between items-center z-[2000] relative flex-shrink-0">
         <div class="flex items-center gap-2 md:gap-3">
             <i class="fa-solid fa-brain text-red-500 text-xl md:text-2xl"></i>
@@ -139,15 +133,12 @@
                 <span class="text-sm font-mono" id="clock">00:00:00</span>
             </div>
             
-            <!-- Icon Thông báo & Dropdown -->
             <div class="relative flex items-center border-l border-slate-700 pl-3 md:pl-4">
                 <button id="btn-notif" onclick="toggleNotifications()" class="text-slate-300 hover:text-white relative p-1.5 md:p-2 transition-colors focus:outline-none">
                     <i class="fa-solid fa-bell text-xl"></i>
-                    <!-- Badge số lượng -->
                     <span id="notif-badge" class="absolute top-0 right-0 -mt-0.5 -mr-0.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm hidden border border-slate-900">0</span>
                 </button>
                 
-                <!-- Dropdown List Thông báo -->
                 <div id="notif-dropdown" class="absolute top-full right-0 mt-3 w-[280px] md:w-80 bg-white rounded-xl shadow-2xl z-[5000] hidden flex-col border border-gray-200 origin-top-right transition-all text-gray-800 before:content-[''] before:absolute before:-top-2 before:right-3 before:border-8 before:border-transparent before:border-b-white">
                     <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
                         <h3 class="font-bold text-gray-800 text-sm"><i class="fa-solid fa-clock-rotate-left mr-1.5 text-blue-500"></i>Lịch sử thông báo</h3>
@@ -159,11 +150,9 @@
                 </div>
             </div>
 
-            <!-- Phần Đăng nhập -->
             <div class="flex items-center gap-2 md:gap-3 ml-1 md:ml-2">
                 <div id="user-info" class="text-right hidden">
-                    <!-- Thông tin user đăng nhập -->
-                </div>
+                    </div>
                 <button id="btn-login" onclick="openLoginModal()" class="bg-blue-600 hover:bg-blue-700 p-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition shadow-md whitespace-nowrap">
                     <i class="fa-solid fa-user-lock md:mr-2"></i><span class="hidden md:inline">Đăng nhập</span>
                 </button>
@@ -171,12 +160,9 @@
         </div>
     </header>
 
-    <!-- Main Content Layout (Tỉ lệ 30% Danh sách - 70% Bản đồ) -->
     <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
         
-        <!-- Sidebar (40% Height on Mobile, 30% Width on Desktop) -->
         <aside class="w-full md:w-[30%] h-[40%] md:h-full bg-white shadow-xl z-10 flex flex-col flex-shrink-0 order-2 md:order-1 border-t md:border-t-0 md:border-r border-gray-200">
-            <!-- Thống kê nhanh -->
             <div class="hidden md:block p-3 lg:p-4 border-b border-gray-100 bg-slate-50">
                 <div class="grid grid-cols-3 gap-1.5 lg:gap-2 text-center">
                     <div class="bg-red-50 rounded p-1.5 lg:p-2 border border-red-100">
@@ -194,7 +180,6 @@
                 </div>
             </div>
 
-            <!-- Bộ lọc & Tìm kiếm -->
             <div class="p-3 md:p-4 border-b border-gray-100 bg-white">
                 <div class="mb-3">
                     <div class="relative">
@@ -226,27 +211,21 @@
                 </div>
             </div>
 
-            <!-- Danh sách bệnh viện -->
             <div class="flex-1 overflow-y-auto p-2 md:p-3 bg-gray-50/50" id="hospital-list">
-                <!-- Được render bằng JavaScript -->
-            </div>
+                </div>
         </aside>
 
-        <!-- Map Container (60% Height on Mobile, 70% Width on Desktop) -->
         <main class="w-full md:w-[70%] relative h-[60%] md:h-full order-1 md:order-2 flex-shrink-0 z-[0]">
             <div id="map"></div>
             
-            <!-- Nút Hủy Dẫn Đường -->
             <button id="btn-clear-route" class="absolute top-4 left-4 md:left-6 z-[1000] bg-white text-red-600 px-3 py-2 rounded-md shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 hidden items-center gap-2 hover:bg-red-50 text-sm font-medium transition-all" onclick="clearRoute()">
                 <i class="fa-solid fa-route-slash"></i> Hủy dẫn đường
             </button>
 
-            <!-- Nút Định vị lại Vị trí (Dịch xuống tránh nút Zoom trên mobile) -->
             <button id="btn-re-locate" class="absolute top-20 right-3 md:top-auto md:right-auto md:bottom-6 md:left-6 z-[1000] bg-white w-10 h-10 rounded-full shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 flex items-center justify-center text-blue-600 hover:bg-blue-50 focus:outline-none transition-transform active:scale-95" title="Định vị lại vị trí của tôi">
                 <i class="fa-solid fa-location-crosshairs text-lg"></i>
             </button>
 
-            <!-- Chú thích bản đồ (Đã tối ưu kích thước, dồn hẳn sang phải) -->
             <div id="map-legend" class="hidden md:block absolute bottom-6 right-2 md:right-4 lg:right-6 z-[1000] bg-white/95 backdrop-blur p-2.5 rounded-lg shadow-lg border border-gray-200">
                 <h4 class="text-[10px] md:text-[11px] font-bold text-gray-700 mb-1.5">Chú giải</h4>
                 <div class="space-y-1.5 text-[9px] md:text-[10px]">
@@ -260,12 +239,9 @@
                 </div>
             </div>
 
-            <!-- Cẩm nang Đột quỵ (Đẩy sang góc trái cạnh nút Định vị, tránh đè Chú giải trên Tablet/Fold) -->
             <div id="stroke-guide-banner" class="absolute bottom-6 left-1/2 -translate-x-1/2 md:left-20 md:translate-x-0 z-[1000] bg-[#e6f4e1] p-1.5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-green-300 transition-all duration-300 w-[180px] sm:w-[200px] md:w-[220px] hidden">
-                <!-- Sử dụng ảnh Picture2.png (Tự động thu nhỏ theo max-w) -->
                 <img src="Picture2.png" alt="Cẩm nang nhận biết đột quỵ FAST" class="w-full h-auto object-contain rounded-lg" onerror="this.style.display='none'; document.getElementById('stroke-guide-fallback').classList.remove('hidden');">
                 
-                <!-- Fallback HTML (Dự phòng khi không tải được file ảnh) -->
                 <div id="stroke-guide-fallback" class="hidden bg-[#e6f4e1] p-1.5 md:p-2 text-center rounded-lg">
                     <h4 class="text-red-600 font-bold text-[9px] md:text-xs mb-1.5 md:mb-2 uppercase tracking-wide">Tranh thủ từng giây<br>Cứu ngay đột quỵ</h4>
                     <div class="flex justify-center gap-1.5 md:gap-3 mb-1.5 md:mb-2">
@@ -288,7 +264,6 @@
                     </a>
                 </div>
 
-                <!-- Nút ẩn banner cho bớt vướng bản đồ -->
                 <button onclick="document.getElementById('stroke-guide-banner').style.display='none'" class="absolute -top-3 -right-3 bg-white rounded-full shadow-md border border-gray-200 text-gray-400 hover:text-red-600 w-6 h-6 flex items-center justify-center text-xs transition-colors z-[1010]">
                     <i class="fa-solid fa-times"></i>
                 </button>
@@ -296,7 +271,134 @@
         </main>
     </div>
 
-    <!-- Modal Cập nhật Trạng thái/Sự cố -->
+    <div id="notify-modal" class="fixed inset-0 bg-black/60 z-[4000] hidden flex justify-center items-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 md:p-5 border-b border-gray-100 flex justify-between items-center bg-orange-50 rounded-t-2xl">
+                <h2 class="text-base md:text-lg font-bold text-orange-800"><i class="fa-solid fa-truck-medical mr-2"></i>Thông báo ca cấp cứu đang đến</h2>
+                <button onclick="closeNotifyModal()" class="text-gray-400 hover:text-red-500 p-1"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="p-4 md:p-6 overflow-y-auto">
+                <p class="text-sm md:text-base text-gray-700 mb-5">Bạn đang gửi thông báo chuyển bệnh nhân đột quỵ tới: <strong id="notify-hospital-name" class="text-blue-700"></strong></p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase">1. Thông tin người bệnh</h3>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Họ và tên (*)</label>
+                            <input type="text" id="notify-name" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="VD: Nguyễn Văn A">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Năm sinh (*)</label>
+                                <input type="number" id="notify-yob" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="VD: 1960">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Số CCCD</label>
+                                <input type="number" id="notify-cccd" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Tùy chọn">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="flex flex-col h-full">
+                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Điện thoại</label>
+                                <input type="tel" id="notify-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Nhập số">
+                            </div>
+                            <div class="flex flex-col h-full">
+                                <label class="block text-[11px] md:text-xs font-semibold text-gray-700 mb-1.5 leading-tight">
+                                    Điện thoại người thân<br>
+                                    <span class="font-normal text-gray-500 text-[10px]">(thông báo tình trạng)</span>
+                                </label>
+                                <input type="tel" id="notify-relative-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Nhập số">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Nửa Phải: Dấu hiệu F.A.S.T và Thời điểm (Hybrid UI) -->
+                    <div class="space-y-4">
+                        <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase">2. Tình trạng hiện tại</h3>
+                        
+                        <div class="space-y-2.5">
+                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
+                                <input type="checkbox" class="peer sr-only" value="meo_mieng">
+                                <div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0">
+                                    <i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="font-bold text-sm text-gray-800"><span class="text-red-600">MÉO</span> miệng</div>
+                                    <div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Khuôn mặt mất cân đối, nhân trung lệch</div>
+                                </div>
+                            </label>
+                            
+                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
+                                <input type="checkbox" class="peer sr-only" value="ngong_noi">
+                                <div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0">
+                                    <i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="font-bold text-sm text-gray-800"><span class="text-red-600">NGỌNG</span> nói</div>
+                                    <div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Nói khó, líu lưỡi, không nói được câu hoàn chỉnh</div>
+                                </div>
+                            </label>
+
+                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
+                                <input type="checkbox" class="peer sr-only" value="xuoi_tay">
+                                <div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0">
+                                    <i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="font-bold text-sm text-gray-800"><span class="text-red-600">XUỘI</span> yếu liệt</div>
+                                    <div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Yếu, liệt, không giơ được một bên tay hoặc chân</div>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="pt-2 mt-4 border-t border-gray-100">
+                            <label class="block text-xs font-semibold text-gray-700 mb-2 mt-3">Thời điểm bắt đầu có triệu chứng (*)</label>
+                            
+                            <div id="quick-time-container" class="grid grid-cols-3 gap-2">
+                                <label class="relative cursor-pointer h-full">
+                                    <input type="radio" name="quick_time" value="Dưới 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()">
+                                    <div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Dưới 4.5 giờ</div>
+                                </label>
+                                <label class="relative cursor-pointer h-full">
+                                    <input type="radio" name="quick_time" value="Trên 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()">
+                                    <div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Trên 4.5 giờ</div>
+                                </label>
+                                <label class="relative cursor-pointer h-full">
+                                    <input type="radio" name="quick_time" value="Không rõ" class="peer sr-only" onchange="clearSpecificTime()">
+                                    <div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Không rõ</div>
+                                </label>
+                            </div>
+
+                            <p id="toggle-specific-time" class="text-[11px] text-blue-600 underline cursor-pointer mt-3 text-center font-medium hover:text-blue-800 transition-colors" onclick="showSpecificTimeInput()">
+                                Hoặc nhập giờ cụ thể nếu bạn nhớ rõ
+                            </p>
+
+                            <div id="specific-time-container" class="hidden mt-3">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <i class="fa-regular fa-clock text-gray-400 text-lg"></i>
+                                    </div>
+                                    <input type="text" id="notify-time" class="w-full border border-gray-300 rounded-xl shadow-sm py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#fafafa] text-lg font-bold text-gray-800 placeholder-gray-400" placeholder="Nhập giờ (VD: 10h30, 2h chiều...)">
+                                </div>
+                                <p class="text-[11px] text-gray-500 cursor-pointer mt-2.5 text-center hover:underline font-medium" onclick="clearSpecificTime()">Trở lại chọn mốc thời gian nhanh</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t bg-gray-50 rounded-b-2xl flex gap-3">
+                <button onclick="closeNotifyModal()" class="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-bold text-sm transition-colors">Hủy bỏ</button>
+                <button onclick="submitNotification()" class="flex-[2] px-4 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> BÁO TRƯỚC CHO BV
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="update-modal" class="fixed inset-0 bg-black/50 z-[3000] hidden flex justify-center items-center p-4">
         <div class="bg-white rounded-xl p-5 md:p-6 w-full max-w-[400px] shadow-2xl transform transition-all">
             <div class="flex justify-between items-center mb-4">
@@ -328,7 +430,6 @@
         </div>
     </div>
 
-    <!-- Modal Đăng nhập Phân Quyền -->
     <div id="login-modal" class="fixed inset-0 bg-black/60 z-[4000] hidden flex justify-center items-center p-4">
         <div class="bg-white rounded-xl p-6 md:p-8 w-full max-w-[450px] shadow-2xl">
             <h2 class="text-xl md:text-2xl font-bold text-center text-slate-800 mb-2">Đăng nhập Hệ thống</h2>
@@ -337,13 +438,12 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Tài khoản đơn vị</label>
                 <select id="login-account" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm">
-                    <!-- Sẽ được điền bằng JavaScript -->
-                </select>
+                    </select>
             </div>
 
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Mật khẩu</label>
-                <input type="password" id="login-pass" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Nhập mật khẩu">
+                <input type="password" id="login-pass" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Nhập mật khẩu (Mặc định: 115)">
             </div>
 
             <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium shadow-md transition text-sm">Đăng nhập an toàn</button>
@@ -351,7 +451,6 @@
         </div>
     </div>
 
-    <!-- Leaflet & Routing Machine JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
@@ -890,9 +989,9 @@
                 
                 let reportBtnHtml = '';
                 if (loggedInUser && (loggedInUser.role === 'admin' || (loggedInUser.role === 'hospital' && loggedInUser.id === hospital.id))) {
-                    reportBtnHtml = `<button class="flex-1 min-w-[70px] bg-yellow-500 text-white text-[11px] py-1.5 px-1 rounded hover:bg-yellow-600 transition-colors shadow-sm" onclick="openUpdateModal(${hospital.id})"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Báo cáo</button>`;
+                    reportBtnHtml = `<button class="flex-1 min-w-[70px] bg-yellow-500 text-white text-[11px] py-1.5 px-1 rounded hover:bg-yellow-600 transition-colors shadow-sm" onclick="openUpdateModal(${hospital.id})"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Báo cáo BV</button>`;
                 } else if (!loggedInUser) {
-                    reportBtnHtml = `<button class="flex-1 min-w-[70px] bg-gray-200 text-gray-500 text-[11px] py-1.5 px-1 rounded cursor-not-allowed shadow-sm" onclick="showToast('Vui lòng Đăng nhập hệ thống để dùng tính năng này', 'warning')" title="Yêu cầu Đăng nhập"><i class="fa-solid fa-lock mr-1"></i> Báo cáo</button>`;
+                    reportBtnHtml = `<button class="flex-1 min-w-[70px] bg-orange-500 text-white text-[11px] py-1.5 px-1 rounded hover:bg-orange-600 transition-colors shadow-sm" onclick="openNotifyModal(${hospital.id})"><i class="fa-solid fa-bell mr-1"></i> Báo trước cho BV</button>`;
                 }
 
                 const statusText = hospital.currentStatus === 0 ? '<span class="text-green-600 font-bold"><i class="fa-solid fa-circle-check"></i> Sẵn sàng nhận bệnh</span>' : 
@@ -916,7 +1015,7 @@
                         ${noteHtml}
                         ${capabilitiesText}
                         <div class="mt-2.5 flex gap-1 flex-wrap">
-                            <a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="flex-1 min-w-[70px] text-center bg-green-600 !text-white text-[11px] py-1.5 px-1 rounded hover:bg-green-700 shadow-sm inline-block no-underline"><i class="fa-solid fa-phone"></i> Gọi</a>
+                            <a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="flex-[0.8] min-w-[60px] text-center bg-green-600 !text-white text-[11px] py-1.5 px-1 rounded hover:bg-green-700 shadow-sm inline-block no-underline"><i class="fa-solid fa-phone"></i> Gọi</a>
                             ${reportBtnHtml}
                             ${(loggedInUser && hospital.tier === 3) ? `<button class="w-full mt-1 bg-blue-600 text-white text-[11px] py-1.5 px-1 rounded hover:bg-blue-700 shadow-sm" onclick="showToast('Mô phỏng tính năng hội chẩn Video Call', 'info')"><i class="fa-solid fa-video mr-1"></i> Hội chẩn từ xa</button>` : ''}
                         </div>
@@ -948,12 +1047,8 @@
                     : 'p-2.5 md:p-3 mb-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors bg-white';
 
                 const priorityBadge = isNearestPriority 
-                    ? `<div class="bg-green-600 text-white text-[10px] md:text-[11px] px-3 py-2 rounded-t-[6px] -mx-2.5 md:-mx-3 -mt-2.5 md:-mt-3 mb-2 flex items-start gap-2 shadow-sm">
-                        <i class="fa-solid fa-truck-medical mt-0.5 animate-pulse text-xs md:text-sm"></i>
-                        <div class="flex flex-col leading-tight">
-                            <span class="font-bold">Tuyến ưu tiên gần nhất</span>
-                            <span class="font-medium text-green-100">(Tầng 2 + Tiêu sợi huyết)</span>
-                        </div>
+                    ? `<div class="bg-green-600 text-white text-[10px] md:text-[11px] font-bold px-3 py-1.5 rounded-t-[6px] -mx-2.5 md:-mx-3 -mt-2.5 md:-mt-3 mb-2 flex items-center shadow-sm">
+                        <i class="fa-solid fa-truck-medical mr-2 animate-pulse"></i> Tuyến ưu tiên gần nhất (Tầng 2 + Tiêu sợi huyết)
                        </div>` 
                     : '';
 
@@ -1024,6 +1119,95 @@
         });
 
         // --- CÁC HÀM XỬ LÝ SỰ CỐ (MODAL) ---
+        let currentNotifyHospitalId = null;
+
+        window.openNotifyModal = function(id) {
+            const hospital = hospitalsData.find(h => h.id === id);
+            if (!hospital) return;
+            currentNotifyHospitalId = id;
+            document.getElementById('notify-hospital-name').innerText = hospital.name;
+            
+            // Reset form
+            document.getElementById('notify-name').value = '';
+            document.getElementById('notify-yob').value = '';
+            document.getElementById('notify-cccd').value = '';
+            document.getElementById('notify-phone').value = '';
+            document.getElementById('notify-relative-phone').value = '';
+            document.querySelectorAll('#notify-modal input[type="checkbox"]').forEach(cb => cb.checked = false);
+            
+            // Reset UI thời gian
+            document.querySelectorAll('input[name="quick_time"]').forEach(r => r.checked = false);
+            document.getElementById('specific-time-container').classList.add('hidden');
+            document.getElementById('quick-time-container').classList.remove('hidden');
+            document.getElementById('toggle-specific-time').classList.remove('hidden');
+            document.getElementById('notify-time').value = '';
+
+            document.getElementById('notify-modal').classList.remove('hidden');
+            map.closePopup();
+        };
+
+        window.closeNotifyModal = function() {
+            document.getElementById('notify-modal').classList.add('hidden');
+        };
+
+        window.showSpecificTimeInput = function() {
+            document.getElementById('specific-time-container').classList.remove('hidden');
+            document.getElementById('toggle-specific-time').classList.add('hidden');
+            
+            // Bỏ chọn các nút nhanh
+            document.querySelectorAll('input[name="quick_time"]').forEach(r => r.checked = false);
+            
+            // Focus vào ô nhập text
+            document.getElementById('notify-time').focus();
+        };
+
+        window.clearSpecificTime = function() {
+            document.getElementById('notify-time').value = '';
+            document.getElementById('specific-time-container').classList.add('hidden');
+            document.getElementById('toggle-specific-time').classList.remove('hidden');
+        };
+
+        window.submitNotification = function() {
+            const name = document.getElementById('notify-name').value.trim();
+            const yob = document.getElementById('notify-yob').value.trim();
+            const phone = document.getElementById('notify-phone').value.trim();
+            const relPhone = document.getElementById('notify-relative-phone').value.trim();
+            
+            // Lấy thời gian từ chọn nhanh hoặc nhập cụ thể
+            const timeInput = document.getElementById('notify-time').value.trim();
+            const quickTime = document.querySelector('input[name="quick_time"]:checked');
+            let timeValue = "";
+            
+            if (quickTime) {
+                timeValue = quickTime.value;
+            } else if (timeInput) {
+                timeValue = timeInput;
+            }
+
+            if (!name || !yob || !timeValue) {
+                showToast('Vui lòng nhập đầy đủ Họ tên, Năm sinh và Thời điểm xảy ra.', 'error');
+                return;
+            }
+
+            const hospital = hospitalsData.find(h => h.id === currentNotifyHospitalId);
+            
+            // Giả lập thông báo tới BV
+            let phoneStr = phone ? ` (SĐT: ${phone})` : '';
+            showToast(`Đã gửi thông báo ca cấp cứu${phoneStr} đến ${hospital.name}!`, 'info');
+            
+            // Giả lập thông báo SMS tới người thân
+            if(relPhone) {
+                const mapLink = `https://maps.google.com/?q=${hospital.lat},${hospital.lng}`;
+                console.log(`[SMS to ${relPhone}] CẢNH BÁO KHẨN: ${name} đang có dấu hiệu nghi ngờ đột quỵ. Đang được đưa tới ${hospital.name}. Vị trí: ${mapLink}`);
+                
+                setTimeout(() => {
+                    showToast(`Hệ thống đã tự động gửi SMS khẩn cấp tới SĐT người thân: ${relPhone}`, 'warning');
+                }, 1500);
+            }
+
+            closeNotifyModal();
+        };
+
         window.openUpdateModal = function(id) {
             const hospital = hospitalsData.find(h => h.id === id);
             if (!hospital) return;
