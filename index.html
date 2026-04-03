@@ -980,7 +980,7 @@
                 
                 marker.on('click', () => { 
                     if(window.innerWidth < 768) {
-                        map.flyTo([hospital.lat + 0.015, hospital.lng], 14, { duration: 0.5 });
+                        map.flyTo([hospital.lat + 0.025, hospital.lng], 14, { duration: 0.5 });
                     } else {
                         map.flyTo([hospital.lat, hospital.lng], 14, { duration: 0.5 });
                     }
@@ -1003,7 +1003,7 @@
                 listItem.onclick = () => {
                     if(window.innerWidth < 768) {
                         window.scrollTo({top: 0, behavior: 'smooth'});
-                        map.flyTo([hospital.lat + 0.015, hospital.lng], 14, { duration: 1 });
+                        map.flyTo([hospital.lat + 0.025, hospital.lng], 14, { duration: 1 });
                     } else {
                         map.flyTo([hospital.lat, hospital.lng], 14, { duration: 1 });
                     }
