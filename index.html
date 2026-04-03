@@ -6,143 +6,45 @@
     <title>Bản đồ Mạng lưới Đột quỵ khu vực TP.HCM</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            -webkit-tap-highlight-color: transparent;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        #map, #dashboard-map { height: 100%; width: 100%; z-index: 1; }
 
-        #map, #dashboard-map {
-            height: 100%;
-            width: 100%;
-            z-index: 1;
-        }
+        .custom-marker { display: flex; justify-content: center; align-items: center; border-radius: 50%; border: 2px solid white; font-size: 14px; color: white; font-weight: bold; transition: all 0.3s ease; }
+        .marker-tier-3 { background-color: #ef4444; } .marker-tier-2 { background-color: #f97316; } .marker-tier-1 { background-color: #3b82f6; }
 
-        /* Custom Marker Styles */
-        .custom-marker {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 50%;
-            border: 2px solid white;
-            font-size: 14px;
-            color: white;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
+        .marker-status-0 { box-shadow: 0 0 0 3.5px #22c55e, 0 4px 6px rgba(0,0,0,0.3); }
+        .marker-status-1 { box-shadow: 0 0 0 3.5px #eab308, 0 4px 6px rgba(0,0,0,0.3); }
+        .marker-status-2 { animation: marker-pulse-red 1.5s infinite; }
 
-        .marker-tier-3 { background-color: #ef4444; } /* Red */
-        .marker-tier-2 { background-color: #f97316; } /* Orange */
-        .marker-tier-1 { background-color: #3b82f6; } /* Blue */
+        @keyframes marker-pulse-red { 0% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 0 3.5px rgba(239, 68, 68, 0.8); } 70% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 0 3.5px rgba(239, 68, 68, 0); } }
 
-        /* Các class vòng sáng trạng thái */
-        .marker-status-0 {
-            box-shadow: 0 0 0 3.5px #22c55e, 0 4px 6px rgba(0,0,0,0.3); /* Xanh lá - Sẵn sàng */
-        }
-        .marker-status-1 {
-            box-shadow: 0 0 0 3.5px #eab308, 0 4px 6px rgba(0,0,0,0.3); /* Vàng - Bận */
-        }
-        .marker-status-2 {
-            /* Đỏ nhấp nháy - Quá tải */
-            animation: marker-pulse-red 1.5s infinite;
-        }
+        .marker-pulse-purple { animation: marker-pulse-purple 1.5s infinite !important; border-color: #a855f7 !important; }
+        @keyframes marker-pulse-purple { 0% { box-shadow: 0 0 0 3.5px #a855f7, 0 0 0 3.5px rgba(168, 85, 247, 0.8); } 70% { box-shadow: 0 0 0 3.5px #a855f7, 0 0 0 15px rgba(168, 85, 247, 0); } 100% { box-shadow: 0 0 0 3.5px #a855f7, 0 0 0 3.5px rgba(168, 85, 247, 0); } }
 
-        @keyframes marker-pulse-red {
-            0% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 0 3.5px rgba(239, 68, 68, 0.8); }
-            70% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 0 15px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 0 3.5px rgba(239, 68, 68, 0); }
-        }
+        .patient-marker-pulse { animation: patient-pulse 1.5s infinite; transition: top 1s linear, left 1s linear; }
+        @keyframes patient-pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
-        /* Hiệu ứng chớp nháy màu tím cho bệnh viện đang đăng nhập */
-        .marker-pulse-purple {
-            animation: marker-pulse-purple 1.5s infinite !important;
-            border-color: #a855f7 !important;
-        }
-        @keyframes marker-pulse-purple {
-            0% { box-shadow: 0 0 0 3.5px #a855f7, 0 0 0 3.5px rgba(168, 85, 247, 0.8); }
-            70% { box-shadow: 0 0 0 3.5px #a855f7, 0 0 0 15px rgba(168, 85, 247, 0); }
-            100% { box-shadow: 0 0 0 3.5px #a855f7, 0 0 0 3.5px rgba(168, 85, 247, 0); }
-        }
+        .leaflet-routing-container { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; } ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .leaflet-popup-content-wrapper { border-radius: 12px; } .leaflet-popup-content { margin: 12px; width: max-content !important; max-width: 320px; }
 
-        /* Dashobard Patient Marker Pulse */
-        .patient-marker-pulse {
-            animation: patient-pulse 1.5s infinite;
-        }
-        @keyframes patient-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
+        .toast-enter { transform: translateX(100%); opacity: 0; } .toast-enter-active { transform: translateX(0); opacity: 1; transition: all 0.3s ease-out; } .toast-exit { transform: translateX(100%); opacity: 0; transition: all 0.3s ease-in; }
 
-        /* Ẩn bảng hướng dẫn đường đi mặc định của Routing Machine */
-        .leaflet-routing-container {
-            display: none !important;
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #94a3b8; 
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #64748b; 
-        }
-
-        /* Mobile Adjustments for Popups */
-        .leaflet-popup-content-wrapper {
-            border-radius: 12px;
-        }
-        .leaflet-popup-content {
-            margin: 12px;
-            width: max-content !important;
-            max-width: 320px;
-        }
-
-        /* Toast Animation */
-        .toast-enter {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        .toast-enter-active {
-            transform: translateX(0);
-            opacity: 1;
-            transition: all 0.3s ease-out;
-        }
-        .toast-exit {
-            transform: translateX(100%);
-            opacity: 0;
-            transition: all 0.3s ease-in;
-        }
-
-        .case-card.active {
-            border-color: #ef4444;
-            background-color: #fff1f2;
-            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1), 0 2px 4px -1px rgba(239, 68, 68, 0.06);
-        }
+        .case-card.active { border-color: #ef4444; background-color: #fff1f2; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1), 0 2px 4px -1px rgba(239, 68, 68, 0.06); }
     </style>
 </head>
 <body class="h-[100dvh] flex flex-col overflow-hidden">
 
-    <!-- Toast Notifications Container -->
     <div id="toast-container" class="fixed top-20 right-4 z-[5000] flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Header / Navbar (Responsive) -->
+    <!-- Header -->
     <header class="bg-slate-900 text-white p-3 md:p-4 shadow-md flex justify-between items-center z-[2000] relative flex-shrink-0">
         <div class="flex items-center gap-2 md:gap-3">
             <i class="fa-solid fa-brain text-red-500 text-xl md:text-2xl"></i>
@@ -162,15 +64,11 @@
                 <span class="text-sm font-mono" id="clock">00:00:00</span>
             </div>
             
-            <!-- Icon Thông báo & Dropdown -->
             <div class="relative flex items-center border-l border-slate-700 pl-3 md:pl-4">
                 <button id="btn-notif" onclick="toggleNotifications()" class="text-slate-300 hover:text-white relative p-1.5 md:p-2 transition-colors focus:outline-none">
                     <i class="fa-solid fa-bell text-xl"></i>
-                    <!-- Badge số lượng -->
                     <span id="notif-badge" class="absolute top-0 right-0 -mt-0.5 -mr-0.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm hidden border border-slate-900">0</span>
                 </button>
-                
-                <!-- Dropdown List Thông báo -->
                 <div id="notif-dropdown" class="absolute top-full right-0 mt-3 w-[280px] md:w-80 bg-white rounded-xl shadow-2xl z-[5000] hidden flex-col border border-gray-200 origin-top-right transition-all text-gray-800 before:content-[''] before:absolute before:-top-2 before:right-3 before:border-8 before:border-transparent before:border-b-white">
                     <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
                         <h3 class="font-bold text-gray-800 text-sm"><i class="fa-solid fa-clock-rotate-left mr-1.5 text-blue-500"></i>Lịch sử thông báo</h3>
@@ -182,16 +80,11 @@
                 </div>
             </div>
 
-            <!-- Phần Đăng nhập -->
             <div class="flex items-center gap-2 md:gap-3 ml-1 md:ml-2">
-                <div id="user-info" class="text-right hidden">
-                </div>
-                <!-- Nút Toggle Dashboard (ẩn mặc định) -->
+                <div id="user-info" class="text-right hidden"></div>
                 <button id="btn-toggle-view" onclick="toggleMainView()" class="hidden bg-orange-500 hover:bg-orange-600 text-white p-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition shadow-md whitespace-nowrap flex items-center gap-1">
                     <i class="fa-solid fa-table-columns md:mr-1"></i><span class="hidden md:inline">Quản lý Ca Cấp Cứu</span>
                 </button>
-
-                <!-- Nút Login / Logout -->
                 <button id="btn-login" onclick="openLoginModal()" class="bg-blue-600 hover:bg-blue-700 p-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition shadow-md whitespace-nowrap flex items-center gap-1">
                     <i class="fa-solid fa-user-lock md:mr-1"></i><span class="hidden md:inline">Đăng nhập</span>
                 </button>
@@ -202,166 +95,166 @@
     <!-- VIEW 1: DÀNH CHO NGƯỜI DÂN (DEFAULT) -->
     <div id="main-view" class="flex flex-col md:flex-row flex-1 overflow-hidden">
         
-        <!-- Sidebar (30% Width on Desktop) -->
         <aside class="w-full md:w-[30%] flex-1 md:flex-none h-auto md:h-full bg-white shadow-xl z-10 flex flex-col min-h-0 flex-shrink-0 order-2 md:order-1 border-t md:border-t-0 md:border-r border-gray-200 overflow-hidden">
-            <!-- Thống kê nhanh -->
             <div class="hidden md:block p-4 border-b border-gray-100 bg-slate-50">
                 <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="bg-red-50 rounded p-2 border border-red-100">
-                        <div class="text-xl font-bold text-red-600">17</div>
-                        <div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 3<br>(Can thiệp)</div>
+                        <div class="text-xl font-bold text-red-600">17</div><div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 3<br>(Can thiệp)</div>
                     </div>
                     <div class="bg-orange-50 rounded p-2 border border-orange-100">
-                        <div class="text-xl font-bold text-orange-600">19</div>
-                        <div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 2<br>(Tiêu sợi huyết)</div>
+                        <div class="text-xl font-bold text-orange-600">19</div><div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 2<br>(Tiêu sợi huyết)</div>
                     </div>
                     <div class="bg-blue-50 rounded p-2 border border-blue-100">
-                        <div class="text-xl font-bold text-blue-600">51</div>
-                        <div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 1<br>(Ban đầu)</div>
+                        <div class="text-xl font-bold text-blue-600">51</div><div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 1<br>(Ban đầu)</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Bộ lọc & Tìm kiếm -->
             <div class="p-3 md:p-4 border-b border-gray-100 bg-white">
-                <div class="mb-3">
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <i class="fa-solid fa-search text-gray-400 text-sm"></i>
-                        </div>
-                        <input type="text" id="search-hospital" class="w-full pl-9 pr-3 py-2 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border bg-gray-50" placeholder="Tìm kiếm tên bệnh viện...">
-                    </div>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fa-solid fa-search text-gray-400 text-sm"></i></div>
+                    <input type="text" id="search-hospital" class="w-full pl-9 pr-3 py-2 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border bg-gray-50" placeholder="Tìm kiếm tên bệnh viện...">
                 </div>
 
-                <div class="space-y-2 md:space-y-3">
+                <!-- Advanced Filters (Hidden on Mobile by Default for Public) -->
+                <div id="advanced-filters" class="space-y-2 md:space-y-3 mt-3 hidden md:block">
                     <div class="flex gap-2 items-center">
                         <select id="filter-tier" class="flex-1 text-xs md:text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2 bg-gray-50 border">
-                            <option value="all">Tất cả các tầng</option>
-                            <option value="3">Tầng 3 (Chuyên sâu)</option>
-                            <option value="2">Tầng 2 (Cơ bản)</option>
-                            <option value="1">Tầng 1 (Ban đầu)</option>
+                            <option value="all">Tất cả các tầng</option><option value="3">Tầng 3 (Chuyên sâu)</option><option value="2">Tầng 2 (Cơ bản)</option><option value="1">Tầng 1 (Ban đầu)</option>
                         </select>
                     </div>
-                    
                     <div class="flex gap-2">
-                        <button id="btn-rtpa" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="rtpa">
-                            Tiêu sợi huyết
-                        </button>
-                        <button id="btn-evt" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="evt">
-                            Can thiệp mạch não
-                        </button>
+                        <button id="btn-rtpa" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="rtpa">Tiêu sợi huyết</button>
+                        <button id="btn-evt" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="evt">Can thiệp mạch não</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Danh sách bệnh viện -->
-            <div class="flex-1 overflow-y-auto p-2 md:p-3 pb-8 md:pb-3 bg-gray-50/50" id="hospital-list">
-                <!-- Được render bằng JavaScript -->
-            </div>
+            <div class="flex-1 overflow-y-auto p-2 md:p-3 pb-8 md:pb-3 bg-gray-50/50" id="hospital-list"></div>
         </aside>
 
-        <!-- Map Container (70% Width on Desktop) -->
-        <main class="w-full md:w-[70%] relative h-[45vh] md:h-auto order-1 md:order-2 flex-shrink-0 z-[0]">
+        <!-- Increased Mobile Map Height from 45vh to 55vh -->
+        <main class="w-full md:w-[70%] relative h-[55vh] md:h-auto order-1 md:order-2 flex-shrink-0 z-[0]">
             <div id="map"></div>
             
-            <!-- Nút Hủy Dẫn Đường -->
             <button id="btn-clear-route" class="absolute top-4 left-4 z-[1000] bg-white text-red-600 px-3 py-2 rounded-md shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 hidden items-center gap-2 hover:bg-red-50 text-sm font-medium transition-all" onclick="clearRoute()">
                 <i class="fa-solid fa-route-slash"></i> Hủy dẫn đường
             </button>
 
-            <!-- Nút Định vị lại Vị trí -->
             <button id="btn-re-locate" class="absolute top-4 right-4 md:bottom-6 md:top-auto md:right-auto md:left-6 z-[1000] bg-white w-10 h-10 rounded-full shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 flex items-center justify-center text-blue-600 hover:bg-blue-50 focus:outline-none transition-transform active:scale-95" title="Định vị lại vị trí của tôi">
                 <i class="fa-solid fa-location-crosshairs text-lg"></i>
             </button>
 
-            <!-- Chú thích bản đồ -->
-            <div id="map-legend" class="hidden md:block absolute bottom-6 right-6 z-[1000] bg-white/95 backdrop-blur p-3 rounded-lg shadow-lg border border-gray-200">
+            <div id="map-legend" class="hidden md:block absolute bottom-6 right-6 z-[1000] bg-white/95 backdrop-blur p-3 rounded-lg shadow-lg border border-gray-200 w-max">
                 <h4 class="text-xs font-bold text-gray-700 mb-2">Chú giải</h4>
-                <div class="space-y-2.5 text-xs">
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block border border-gray-200"></span> Tầng 3 (Can thiệp mạch não + Tiêu sợi huyết)</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block border border-gray-200"></span> Tầng 2 (Chỉ Tiêu sợi huyết)</div>
+                <div class="space-y-2.5 text-xs whitespace-nowrap">
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block border border-gray-200"></span> Tầng 3 (Can thiệp mạch + Tiêu sợi huyết)</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block border border-gray-200"></span> Tầng 2 (Tiêu sợi huyết)</div>
                     <div class="flex items-center gap-2" id="legend-tier-1"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block border border-gray-200"></span> Tầng 1 (Cấp cứu ban đầu)</div>
                     <hr class="my-1.5 border-gray-200">
                     <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-0 inline-block"></span> Sẵn sàng nhận bệnh</div>
-                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-1 inline-block"></span> Đang xử lý ca cấp cứu (Bận)</div>
+                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-1 inline-block"></span> Bận / Đang xử lý</div>
                     <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-2 inline-block"></span> Quá tải / Tạm ngưng</div>
                 </div>
             </div>
 
-            <!-- Cẩm nang Đột quỵ (Chỉ hiển thị cho người dùng thông thường) -->
             <div id="stroke-guide-banner" class="absolute bottom-2 left-2 md:bottom-6 md:left-auto md:right-[310px] lg:right-[330px] z-[1000] bg-[#e6f4e1] p-1 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-green-300 transition-all duration-300 w-auto max-w-[200px] md:max-w-[250px] hidden">
-                <!-- Sử dụng ảnh Picture2.png (Tự động thu nhỏ theo max-w) -->
                 <img src="Picture2.png" alt="Cẩm nang nhận biết đột quỵ FAST" class="w-full h-auto object-contain rounded-lg" onerror="this.style.display='none'; document.getElementById('stroke-guide-fallback').classList.remove('hidden');">
-                
-                <!-- Fallback HTML (Dự phòng khi không tải được file ảnh) -->
                 <div id="stroke-guide-fallback" class="hidden bg-[#e6f4e1] p-1.5 text-center rounded-lg">
                     <h4 class="text-red-600 font-bold text-[10px] md:text-xs mb-1 uppercase tracking-wide leading-tight">Tranh thủ từng giây<br>Cứu ngay đột quỵ</h4>
                     <div class="flex justify-center gap-1.5 md:gap-3 mb-1.5">
-                        <div class="text-center">
-                            <div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-regular fa-face-frown-open"></i></div>
-                            <span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">MÉO</span> cười</span>
-                        </div>
-                        <div class="text-center">
-                            <div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-solid fa-comment-slash"></i></div>
-                            <span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">NGỌNG</span> nói</span>
-                        </div>
-                        <div class="text-center">
-                            <div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-solid fa-person-falling"></i></div>
-                            <span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">XUỘI</span> tay</span>
-                        </div>
+                        <div class="text-center"><div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-regular fa-face-frown-open"></i></div><span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">MÉO</span> cười</span></div>
+                        <div class="text-center"><div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-solid fa-comment-slash"></i></div><span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">NGỌNG</span> nói</span></div>
+                        <div class="text-center"><div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-solid fa-person-falling"></i></div><span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">XUỘI</span> tay</span></div>
                     </div>
                     <p class="text-blue-900 font-bold text-[9px] md:text-[11px] mb-1.5 leading-tight">Mau gọi cấp cứu, đi ngay, đừng chờ!</p>
-                    <a href="tel:115" class="bg-red-600 text-white text-sm md:text-lg font-black py-1 px-4 md:py-1.5 md:px-6 rounded-full inline-flex items-center gap-1.5 md:gap-2 animate-pulse shadow-md hover:bg-red-700 transition-colors">
-                        <i class="fa-solid fa-phone-volume"></i> Gọi 115
-                    </a>
+                    <a href="tel:115" class="bg-red-600 text-white text-sm md:text-lg font-black py-1 px-4 md:py-1.5 md:px-6 rounded-full inline-flex items-center gap-1.5 md:gap-2 animate-pulse shadow-md hover:bg-red-700 transition-colors"><i class="fa-solid fa-phone-volume"></i> Gọi 115</a>
                 </div>
-
-                <!-- Nút ẩn banner cho bớt vướng bản đồ -->
-                <button onclick="document.getElementById('stroke-guide-banner').style.display='none'" class="absolute -top-2 -right-2 md:-top-3 md:-left-3 md:right-auto bg-white rounded-full shadow-md border border-gray-200 text-gray-400 hover:text-red-600 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-[10px] md:text-xs transition-colors z-[1010]">
-                    <i class="fa-solid fa-times"></i>
-                </button>
+                <button onclick="document.getElementById('stroke-guide-banner').style.display='none'" class="absolute -top-2 -right-2 md:-top-3 md:-left-3 md:right-auto bg-white rounded-full shadow-md border border-gray-200 text-gray-400 hover:text-red-600 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-[10px] md:text-xs transition-colors z-[1010]"><i class="fa-solid fa-times"></i></button>
             </div>
         </main>
     </div>
 
-    <!-- VIEW 2: DASHBOARD BỆNH VIỆN (HIDDEN BY DEFAULT) -->
+    <!-- VIEW 2: DASHBOARD BỆNH VIỆN -->
     <div id="dashboard-view" class="hidden flex-col md:flex-row flex-1 overflow-hidden z-20 relative bg-white">
         <!-- Left: Case List -->
         <aside class="w-full md:w-[35%] lg:w-[30%] h-[50%] md:h-full bg-slate-50 border-r border-slate-200 flex flex-col min-h-0 overflow-hidden z-10">
             <div class="p-4 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10 shrink-0">
                 <h2 class="font-bold text-slate-800 text-base md:text-lg flex items-center gap-2">
-                    <i class="fa-solid fa-truck-medical text-red-600 animate-pulse"></i> Ca đang chuyển tới
+                    <i class="fa-solid fa-truck-medical text-red-600 animate-pulse"></i> Quản lý Ca Cấp Cứu
                 </h2>
-                <span class="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full" id="dash-case-count">0</span>
             </div>
-            <!-- Bộ lọc ca -->
+            
             <div class="px-4 py-2 border-b border-slate-100 bg-white flex gap-2 shrink-0">
-                <button class="text-[10px] font-bold px-3 py-1.5 rounded-full bg-slate-800 text-white">Chờ tiếp nhận</button>
-                <button class="text-[10px] font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200">Đã tiếp nhận</button>
+                <button id="dash-tab-incoming" class="text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-800 text-white shadow-sm transition-colors" onclick="switchDashTab('incoming')">Đang đến (<span id="count-incoming">0</span>)</button>
+                <button id="dash-tab-history" class="text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors" onclick="switchDashTab('history')">Lịch sử (<span id="count-history">0</span>)</button>
             </div>
-            <!-- Danh sách -->
-            <div class="flex-1 overflow-y-auto p-3 pb-8 md:pb-3 space-y-3" id="dash-case-list">
-                <!-- Data injected by JS -->
-            </div>
+            
+            <div class="flex-1 overflow-y-auto p-3 pb-8 md:pb-3 space-y-3" id="dash-case-list"></div>
         </aside>
         
         <!-- Right: Dashboard Map -->
         <main class="w-full md:w-[65%] lg:w-[70%] h-[50%] md:h-full relative bg-slate-200 z-0">
             <div id="dashboard-map"></div>
             
-            <!-- Nút Hủy lộ trình Dashboard -->
             <button id="btn-dash-clear-route" class="absolute top-4 left-4 z-[1000] bg-white text-slate-600 px-3 py-2 rounded-md shadow-md border border-gray-100 hidden items-center gap-2 hover:bg-slate-50 text-sm font-medium transition-all" onclick="clearDashboardRoute()">
                 <i class="fa-solid fa-compress"></i> Xem toàn cảnh
             </button>
 
-            <!-- Overlay cho biết chưa chọn ca -->
             <div id="dash-map-overlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center text-slate-500 transition-opacity duration-300">
                 <i class="fa-solid fa-map-location-dot text-5xl mb-4 text-slate-300"></i>
-                <p class="font-medium text-lg">Chọn một ca cấp cứu để theo dõi lộ trình</p>
-                <p class="text-xs mt-2 text-slate-400">Hệ thống sẽ hiển thị tuyến đường di chuyển trực tiếp</p>
+                <p class="font-medium text-lg">Chọn một ca cấp cứu để theo dõi</p>
+                <p class="text-xs mt-2 text-slate-400">Lộ trình và vị trí xe di chuyển sẽ được hiển thị trực tiếp</p>
             </div>
         </main>
     </div>
+
+    <!-- MOCK TELEMEDICINE MODAL -->
+    <div id="telemed-modal" class="fixed inset-0 bg-black/95 z-[6000] hidden flex-col transition-all duration-300">
+        <div class="p-3 md:p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-700 shadow-md">
+            <div class="flex items-center gap-3">
+                <div class="bg-red-600 text-white w-8 h-8 rounded flex justify-center items-center font-bold animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.8)]"><i class="fa-solid fa-video"></i></div>
+                <div>
+                    <h3 class="font-bold text-sm md:text-base">Hội chẩn Video Call Trực tuyến</h3>
+                    <p class="text-[10px] md:text-xs text-green-400 font-medium" id="telemed-title"><i class="fa-solid fa-circle text-[8px] animate-pulse mr-1"></i>Đang kết nối: Xe cấp cứu 115 / Bệnh viện tuyến dưới...</p>
+                </div>
+            </div>
+            <button onclick="closeTelemed()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-bold text-xs md:text-sm shadow-md transition-colors"><i class="fa-solid fa-phone-slash mr-2"></i>Kết thúc</button>
+        </div>
+        <div class="flex-1 p-2 md:p-4 flex gap-2 md:gap-4 flex-col md:flex-row relative overflow-hidden">
+            <div class="flex-[3] bg-slate-800/50 rounded-xl border border-slate-700 flex items-center justify-center relative overflow-hidden backdrop-blur-sm">
+                <div class="absolute top-4 left-4 bg-black/60 px-2.5 py-1 rounded text-white text-[10px] font-bold backdrop-blur border border-white/10 uppercase tracking-wider"><i class="fa-solid fa-camera mr-1"></i>Camera Bệnh nhân</div>
+                <div class="absolute top-4 right-4 flex gap-2"><div class="bg-red-600/80 px-2 py-1 rounded text-white text-[10px] font-bold animate-pulse">REC</div></div>
+                <div class="flex flex-col items-center opacity-40"><i class="fa-solid fa-user-injured text-[80px] md:text-[120px] text-slate-500 mb-4"></i><span class="text-slate-400 font-medium">Video Feed Unavailable</span></div>
+                <div class="absolute bottom-4 right-4 w-24 h-32 md:w-32 md:h-44 bg-slate-700 border-2 border-slate-500 rounded-lg shadow-2xl flex items-center justify-center overflow-hidden"><i class="fa-solid fa-user-doctor text-4xl text-slate-500 opacity-50"></i><div class="absolute bottom-1 left-1 bg-black/60 px-1 py-0.5 rounded text-white text-[8px]">Bạn</div></div>
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex justify-center gap-3 md:gap-4">
+                    <button class="bg-slate-700/80 p-3 md:p-4 rounded-full text-white hover:bg-slate-600 border border-white/10 transition-colors tooltip"><i class="fa-solid fa-microphone-lines"></i></button>
+                    <button class="bg-slate-700/80 p-3 md:p-4 rounded-full text-white hover:bg-slate-600 border border-white/10 transition-colors tooltip"><i class="fa-solid fa-video"></i></button>
+                    <button class="bg-blue-600/80 px-4 py-2 rounded-full text-white hover:bg-blue-600 border border-white/10 transition-colors font-bold text-xs md:text-sm flex items-center gap-2"><i class="fa-solid fa-desktop"></i> <span class="hidden md:inline">Chia sẻ màn hình</span></button>
+                </div>
+            </div>
+
+            <div class="flex-1 bg-slate-800/80 rounded-xl border border-slate-700 p-4 flex flex-col backdrop-blur-sm min-w-[280px]">
+                <h4 class="text-white font-bold mb-3 border-b border-slate-700 pb-2 text-sm uppercase"><i class="fa-solid fa-heart-pulse text-red-500 mr-2"></i>Sinh hiệu (Live)</h4>
+                <div class="grid grid-cols-2 gap-2 md:gap-3 text-white text-sm mb-5">
+                    <div class="bg-slate-900/80 border border-slate-700 p-2.5 md:p-3 rounded-lg text-center relative overflow-hidden"><p class="text-slate-400 text-[10px] md:text-xs font-medium uppercase tracking-wider mb-1">SpO2</p><p class="text-xl md:text-2xl font-black text-cyan-400">96<span class="text-[10px] text-slate-500 font-normal">%</span></p></div>
+                    <div class="bg-slate-900/80 border border-slate-700 p-2.5 md:p-3 rounded-lg text-center relative overflow-hidden"><p class="text-slate-400 text-[10px] md:text-xs font-medium uppercase tracking-wider mb-1">Nhịp tim</p><p class="text-xl md:text-2xl font-black text-red-500 animate-pulse">115<span class="text-[10px] text-slate-500 font-normal">bpm</span></p></div>
+                    <div class="bg-slate-900/80 border border-slate-700 p-2.5 md:p-3 rounded-lg text-center col-span-2 flex justify-between items-center px-4"><p class="text-slate-400 text-[10px] md:text-xs font-medium uppercase tracking-wider">Huyết áp</p><p class="text-2xl md:text-3xl font-black text-yellow-400">165<span class="text-lg text-slate-500 mx-0.5">/</span>95</p></div>
+                </div>
+                
+                <h4 class="text-white font-bold mb-3 border-b border-slate-700 pb-2 text-sm uppercase"><i class="fa-solid fa-clipboard-list text-blue-400 mr-2"></i>Đánh giá lâm sàng</h4>
+                <div class="bg-slate-900/50 rounded-lg p-3 border border-slate-700">
+                    <ul class="text-slate-200 text-xs md:text-sm space-y-2.5">
+                        <li class="flex items-start"><i class="fa-solid fa-circle-xmark text-red-500 mt-0.5 mr-2"></i><span>Bệnh nhân lơ mơ, tiếp xúc chậm.</span></li>
+                        <li class="flex items-start"><i class="fa-solid fa-circle-xmark text-red-500 mt-0.5 mr-2"></i><span>Liệt hoàn toàn nửa người bên phải.</span></li>
+                        <li class="flex items-start"><i class="fa-solid fa-circle-xmark text-red-500 mt-0.5 mr-2"></i><span>Thất ngôn toàn bộ.</span></li>
+                    </ul>
+                </div>
+                <button class="mt-auto w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg border border-slate-600 transition-colors text-sm"><i class="fa-solid fa-file-medical mr-2"></i>Xem Hồ sơ chi tiết</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Modal Thông báo trước cho bệnh viện -->
     <div id="notify-modal" class="fixed inset-0 bg-black/60 z-[4000] hidden flex justify-center items-center p-4">
@@ -373,7 +266,6 @@
             
             <div class="p-4 md:p-6 overflow-y-auto">
                 <p class="text-sm md:text-base text-gray-700 mb-5">Bạn đang gửi thông báo chuyển bệnh nhân đột quỵ tới: <strong id="notify-hospital-name" class="text-blue-700"></strong></p>
-                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-4">
                         <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase">1. Thông tin người bệnh</h3>
@@ -382,165 +274,62 @@
                             <input type="text" id="notify-name" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="VD: Nguyễn Văn A">
                         </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Năm sinh (*)</label>
-                                <input type="number" id="notify-yob" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="VD: 1960">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Số CCCD</label>
-                                <input type="number" id="notify-cccd" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Tùy chọn">
-                            </div>
+                            <div><label class="block text-xs font-semibold text-gray-700 mb-1.5">Năm sinh (*)</label><input type="number" id="notify-yob" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="VD: 1960"></div>
+                            <div><label class="block text-xs font-semibold text-gray-700 mb-1.5">Số CCCD</label><input type="number" id="notify-cccd" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Tùy chọn"></div>
                         </div>
-                        
                         <div class="grid grid-cols-2 gap-3">
-                            <div class="flex flex-col h-full">
-                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Điện thoại</label>
-                                <input type="tel" id="notify-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Nhập số">
-                            </div>
-                            <div class="flex flex-col h-full">
-                                <label class="block text-[11px] md:text-xs font-semibold text-gray-700 mb-1.5 leading-tight">
-                                    Điện thoại người thân<br>
-                                    <span class="font-normal text-gray-500 text-[10px]">(thông báo tình trạng)</span>
-                                </label>
-                                <input type="tel" id="notify-relative-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Nhập số">
-                            </div>
+                            <div class="flex flex-col h-full"><label class="block text-xs font-semibold text-gray-700 mb-1.5">Điện thoại</label><input type="tel" id="notify-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Nhập số"></div>
+                            <div class="flex flex-col h-full"><label class="block text-[11px] md:text-xs font-semibold text-gray-700 mb-1.5 leading-tight">Điện thoại người thân<br><span class="font-normal text-gray-500 text-[10px]">(thông báo tình trạng)</span></label><input type="tel" id="notify-relative-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Nhập số"></div>
                         </div>
                     </div>
                     
-                    <!-- Nửa Phải: Dấu hiệu F.A.S.T và Thời điểm (Hybrid UI) -->
                     <div class="space-y-4">
                         <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase">2. Tình trạng hiện tại</h3>
-                        
                         <div class="space-y-2.5">
-                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
-                                <input type="checkbox" class="peer sr-only" value="meo_mieng">
-                                <div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0">
-                                    <i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="font-bold text-sm text-gray-800"><span class="text-red-600">MÉO</span> miệng</div>
-                                    <div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Khuôn mặt mất cân đối, nhân trung lệch</div>
-                                </div>
-                            </label>
-                            
-                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
-                                <input type="checkbox" class="peer sr-only" value="ngong_noi">
-                                <div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0">
-                                    <i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="font-bold text-sm text-gray-800"><span class="text-red-600">NGỌNG</span> nói</div>
-                                    <div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Nói khó, líu lưỡi, không nói được câu hoàn chỉnh</div>
-                                </div>
-                            </label>
-
-                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors">
-                                <input type="checkbox" class="peer sr-only" value="xuoi_tay">
-                                <div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0">
-                                    <i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="font-bold text-sm text-gray-800"><span class="text-red-600">XUỘI</span> yếu liệt</div>
-                                    <div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Yếu, liệt, không giơ được một bên tay hoặc chân</div>
-                                </div>
-                            </label>
+                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors"><input type="checkbox" class="peer sr-only" value="meo_mieng"><div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0"><i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i></div><div class="flex-1"><div class="font-bold text-sm text-gray-800"><span class="text-red-600">MÉO</span> miệng</div><div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Khuôn mặt mất cân đối, nhân trung lệch</div></div></label>
+                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors"><input type="checkbox" class="peer sr-only" value="ngong_noi"><div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0"><i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i></div><div class="flex-1"><div class="font-bold text-sm text-gray-800"><span class="text-red-600">NGỌNG</span> nói</div><div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Nói khó, líu lưỡi, không nói được câu hoàn chỉnh</div></div></label>
+                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors"><input type="checkbox" class="peer sr-only" value="xuoi_tay"><div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0"><i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i></div><div class="flex-1"><div class="font-bold text-sm text-gray-800"><span class="text-red-600">XUỘI</span> yếu liệt</div><div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Yếu, liệt, không giơ được một bên tay hoặc chân</div></div></label>
                         </div>
-                        
                         <div class="pt-2 mt-4 border-t border-gray-100">
                             <label class="block text-xs font-semibold text-gray-700 mb-2 mt-3">Thời điểm bắt đầu có triệu chứng (*)</label>
-                            
                             <div id="quick-time-container" class="grid grid-cols-3 gap-2">
-                                <label class="relative cursor-pointer h-full">
-                                    <input type="radio" name="quick_time" value="Dưới 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()">
-                                    <div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Dưới 4.5 giờ</div>
-                                </label>
-                                <label class="relative cursor-pointer h-full">
-                                    <input type="radio" name="quick_time" value="Trên 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()">
-                                    <div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Trên 4.5 giờ</div>
-                                </label>
-                                <label class="relative cursor-pointer h-full">
-                                    <input type="radio" name="quick_time" value="Không rõ" class="peer sr-only" onchange="clearSpecificTime()">
-                                    <div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Không rõ</div>
-                                </label>
+                                <label class="relative cursor-pointer h-full"><input type="radio" name="quick_time" value="Dưới 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()"><div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Dưới 4.5 giờ</div></label>
+                                <label class="relative cursor-pointer h-full"><input type="radio" name="quick_time" value="Trên 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()"><div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Trên 4.5 giờ</div></label>
+                                <label class="relative cursor-pointer h-full"><input type="radio" name="quick_time" value="Không rõ" class="peer sr-only" onchange="clearSpecificTime()"><div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Không rõ</div></label>
                             </div>
-
-                            <p id="toggle-specific-time" class="text-[11px] text-blue-600 underline cursor-pointer mt-3 text-center font-medium hover:text-blue-800 transition-colors" onclick="showSpecificTimeInput()">
-                                Hoặc nhập giờ cụ thể nếu bạn nhớ rõ
-                            </p>
-
+                            <p id="toggle-specific-time" class="text-[11px] text-blue-600 underline cursor-pointer mt-3 text-center font-medium hover:text-blue-800 transition-colors" onclick="showSpecificTimeInput()">Hoặc nhập giờ cụ thể nếu bạn nhớ rõ</p>
                             <div id="specific-time-container" class="hidden mt-3">
-                                <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <i class="fa-regular fa-clock text-gray-400 text-lg"></i>
-                                    </div>
-                                    <input type="text" id="notify-time" class="w-full border border-gray-300 rounded-xl shadow-sm py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#fafafa] text-lg font-bold text-gray-800 placeholder-gray-400" placeholder="Nhập giờ (VD: 10h30, 2h chiều...)">
-                                </div>
+                                <div class="relative"><div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-regular fa-clock text-gray-400 text-lg"></i></div><input type="text" id="notify-time" class="w-full border border-gray-300 rounded-xl shadow-sm py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#fafafa] text-lg font-bold text-gray-800 placeholder-gray-400" placeholder="Nhập giờ (VD: 10h30, 2h chiều...)"></div>
                                 <p class="text-[11px] text-gray-500 cursor-pointer mt-2.5 text-center hover:underline font-medium" onclick="clearSpecificTime()">Trở lại chọn mốc thời gian nhanh</p>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
             
             <div class="p-4 border-t bg-gray-50 rounded-b-2xl flex gap-3">
                 <button onclick="closeNotifyModal()" class="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-bold text-sm transition-colors">Hủy bỏ</button>
-                <button id="btn-submit-notify" onclick="submitNotification()" class="flex-[2] px-4 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-paper-plane"></i> BÁO TRƯỚC CHO BỆNH VIỆN
-                </button>
+                <button id="btn-submit-notify" onclick="submitNotification()" class="flex-[2] px-4 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2"><i class="fa-solid fa-paper-plane"></i> BÁO TRƯỚC CHO BỆNH VIỆN</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Cập nhật Trạng thái/Sự cố -->
+    <!-- Modals Giữ Nguyên (Update & Login) -->
     <div id="update-modal" class="fixed inset-0 bg-black/50 z-[3000] hidden flex justify-center items-center p-4">
         <div class="bg-white rounded-xl p-5 md:p-6 w-full max-w-[400px] shadow-2xl transform transition-all">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-base md:text-lg font-bold text-slate-800"><i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i>Báo cáo trạng thái</h2>
-                <button onclick="closeUpdateModal()" class="text-gray-400 hover:text-red-500 p-2 -mr-2"><i class="fa-solid fa-times text-xl"></i></button>
-            </div>
-            
-            <p id="modal-hospital-name" class="font-semibold text-blue-700 mb-4 bg-blue-50 p-2.5 rounded border border-blue-100 text-sm"></p>
-            <input type="hidden" id="modal-hospital-id">
-
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Tình trạng hiện tại</label>
-                <select id="modal-status" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm">
-                    <option value="0">🟢 Sẵn sàng nhận bệnh</option>
-                    <option value="1">🟡 Đang xử lý ca cấp cứu (Bận)</option>
-                    <option value="2">🔴 Quá tải / Tạm ngưng tiếp nhận</option>
-                </select>
-            </div>
-
-            <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Ghi chú sự cố (nếu có)</label>
-                <textarea id="modal-note" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="VD: Hệ thống can thiệp mạch não đang bảo trì..."></textarea>
-            </div>
-
-            <div class="flex justify-end gap-2.5">
-                <button onclick="closeUpdateModal()" class="flex-1 md:flex-none px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm">Hủy</button>
-                <button onclick="saveUpdateStatus()" class="flex-1 md:flex-none px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md text-sm">Lưu báo cáo</button>
-            </div>
+            <div class="flex justify-between items-center mb-4"><h2 class="text-base md:text-lg font-bold text-slate-800"><i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i>Báo cáo trạng thái</h2><button onclick="closeUpdateModal()" class="text-gray-400 hover:text-red-500 p-2 -mr-2"><i class="fa-solid fa-times text-xl"></i></button></div>
+            <p id="modal-hospital-name" class="font-semibold text-blue-700 mb-4 bg-blue-50 p-2.5 rounded border border-blue-100 text-sm"></p><input type="hidden" id="modal-hospital-id">
+            <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1.5">Tình trạng hiện tại</label><select id="modal-status" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm"><option value="0">🟢 Sẵn sàng nhận bệnh</option><option value="1">🟡 Đang xử lý ca cấp cứu (Bận)</option><option value="2">🔴 Quá tải / Tạm ngưng tiếp nhận</option></select></div>
+            <div class="mb-5"><label class="block text-sm font-medium text-gray-700 mb-1.5">Ghi chú sự cố (nếu có)</label><textarea id="modal-note" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="VD: Hệ thống can thiệp mạch não đang bảo trì..."></textarea></div>
+            <div class="flex justify-end gap-2.5"><button onclick="closeUpdateModal()" class="flex-1 md:flex-none px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm">Hủy</button><button onclick="saveUpdateStatus()" class="flex-1 md:flex-none px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md text-sm">Lưu báo cáo</button></div>
         </div>
     </div>
 
-    <!-- Modal Đăng nhập Phân Quyền -->
     <div id="login-modal" class="fixed inset-0 bg-black/60 z-[4000] hidden flex justify-center items-center p-4">
         <div class="bg-white rounded-xl p-6 md:p-8 w-full max-w-[450px] shadow-2xl">
-            <h2 class="text-xl md:text-2xl font-bold text-center text-slate-800 mb-2">Đăng nhập Hệ thống</h2>
-            <p class="text-center text-xs md:text-sm text-gray-500 mb-6">Cổng thông tin dành cho các đơn vị Y tế</p>
-            
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Tài khoản đơn vị</label>
-                <select id="login-account" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm">
-                    </select>
-            </div>
-
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Mật khẩu</label>
-                <input type="password" id="login-pass" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Nhập mật khẩu (Mặc định: 115)">
-            </div>
-
+            <h2 class="text-xl md:text-2xl font-bold text-center text-slate-800 mb-2">Đăng nhập Hệ thống</h2><p class="text-center text-xs md:text-sm text-gray-500 mb-6">Cổng thông tin dành cho các đơn vị Y tế</p>
+            <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1.5">Tài khoản đơn vị</label><select id="login-account" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm"></select></div>
+            <div class="mb-6"><label class="block text-sm font-medium text-gray-700 mb-1.5">Mật khẩu</label><input type="password" id="login-pass" class="w-full border-gray-300 rounded-lg shadow-sm p-2.5 border focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Nhập mật khẩu (Mặc định: 115)"></div>
             <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium shadow-md transition text-sm">Đăng nhập an toàn</button>
             <button onclick="closeLoginModal()" class="w-full mt-2.5 bg-transparent text-gray-500 py-2.5 rounded-lg hover:text-gray-700 font-medium transition text-sm">Hủy bỏ</button>
         </div>
@@ -646,184 +435,87 @@
             { id: 87, name: "Bệnh viện đa khoa Nguyễn Thị Thập", tier: 1, rtpa: false, evt: false, lat: 10.740, lng: 106.710, phone: "1900 1234" }
         ];
 
-        // --- BACK-END MOCK: ARRAY LƯU CA BỆNH ĐANG ĐẾN ---
+        // --- BACK-END MOCK ---
         let incomingCases = []; 
-        
-        // Thêm sẵn 1 ca giả lập đang tới BV Nhân Dân 115 (id: 1)
         setTimeout(() => {
             incomingCases.push({
-                id: 'case_' + Date.now(),
-                hospitalId: 1,
-                name: "Nguyễn Văn Tùng",
-                yob: "1965",
-                cccd: "079065123456", 
-                phone: "0901234567",
-                relPhone: "0987654321",
-                symptoms: ["meo_mieng", "xuoi_tay"],
-                submitTime: "10:15",
-                onset: "Dưới 4.5 giờ",
-                status: "incoming",
-                patientLat: 10.7600, 
-                patientLng: 106.6600,
-                eta: 8, // Chuyển sang Number để đếm ngược
-                alerted5Min: false // Cờ đánh dấu đã báo động đỏ 5 phút chưa
+                id: 'case_' + Date.now(), hospitalId: 1, name: "Nguyễn Văn Tùng", yob: "1965",
+                cccd: "079065123456", phone: "0901234567", relPhone: "0987654321", symptoms: ["meo_mieng", "xuoi_tay"],
+                submitTime: "10:15", onset: "Dưới 4.5 giờ", status: "incoming", patientLat: 10.7600, patientLng: 106.6600,
+                eta: 8, alerted5Min: false 
             });
         }, 500);
 
-        // Khởi tạo trạng thái mô phỏng (Real-time status)
-        hospitalsData.forEach(h => {
-            h.currentStatus = Math.random() > 0.8 ? 1 : 0; 
-            h.incidentNote = ""; 
-            h.manualOverride = false; 
-        });
+        hospitalsData.forEach(h => { h.currentStatus = Math.random() > 0.8 ? 1 : 0; h.incidentNote = ""; h.manualOverride = false; });
 
-        // --- 2. BIẾN TOÀN CỤC & KHỞI TẠO BẢN ĐỒ ---
-        let currentUserLat = null;
-        let currentUserLng = null;
-        let routingControl = null;
-        let loggedInUser = null; // null | {role: 'admin', name:...} | {role: 'hospital', id: ...} | {role: '115'}
-        let currentView = 'map'; 
-        
-        // Quản lý thông báo
-        let notificationsList = [];
-        let unreadNotifCount = 0;
+        let currentUserLat = null; let currentUserLng = null;
+        let routingControl = null; let loggedInUser = null; 
+        let currentView = 'map'; let currentDashTab = 'incoming'; let currentTrackingCaseId = null;
+        let notificationsList = []; let unreadNotifCount = 0;
         
         const map = L.map('map', { zoomControl: false }).setView([10.8231, 106.6297], 10); 
-        
         L.control.zoom({ position: 'topright' }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap',
-            maxZoom: 19
-        }).addTo(map);
-
-        window.addEventListener('resize', () => {
-            map.invalidateSize();
-            if(dashMap) dashMap.invalidateSize();
-        });
+        window.addEventListener('resize', () => { map.invalidateSize(); if(dashMap) dashMap.invalidateSize(); });
 
         let markers = []; 
         let activeFilters = { tier: 'all', rtpa: false, evt: false, search: '' };
 
-        // --- TÍNH NĂNG TOAST & NOTIFICATION HISTORY ---
         function addNotificationToHistory(message, type = 'info') {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            
+            const timeString = new Date().toLocaleTimeString('vi-VN');
             notificationsList.unshift({ message, type, time: timeString });
             if (notificationsList.length > 50) notificationsList.pop(); 
-            
-            unreadNotifCount++;
-            updateNotifBadge();
-            renderNotificationList();
+            unreadNotifCount++; updateNotifBadge(); renderNotificationList();
         }
 
         function showToast(message, type = 'info') {
             addNotificationToHistory(message, type);
-
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            
-            let bgClass, iconClass;
-            if (type === 'error') {
-                bgClass = 'bg-red-600'; iconClass = 'fa-triangle-exclamation animate-pulse';
-            } else if (type === 'warning') {
-                bgClass = 'bg-yellow-500'; iconClass = 'fa-bell';
-            } else {
-                bgClass = 'bg-blue-500'; iconClass = 'fa-circle-info';
-            }
-
+            let bgClass = type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500';
+            let iconClass = type === 'error' ? 'fa-triangle-exclamation animate-pulse' : type === 'warning' ? 'fa-bell' : 'fa-circle-info';
             toast.className = `${bgClass} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 text-sm font-medium toast-enter pointer-events-auto`;
             toast.innerHTML = `<i class="fa-solid ${iconClass}"></i><span>${message}</span>`;
-            
             container.appendChild(toast);
-
-            requestAnimationFrame(() => {
-                toast.classList.add('toast-enter-active');
-                toast.classList.remove('toast-enter');
-            });
-
-            setTimeout(() => {
-                toast.classList.add('toast-exit');
-                setTimeout(() => toast.remove(), 300);
-            }, type === 'error' ? 6000 : 4000); // Lỗi/Báo động hiển thị lâu hơn
+            requestAnimationFrame(() => { toast.classList.add('toast-enter-active'); toast.classList.remove('toast-enter'); });
+            setTimeout(() => { toast.classList.add('toast-exit'); setTimeout(() => toast.remove(), 300); }, type === 'error' ? 6000 : 4000); 
         }
 
         function toggleNotifications() {
             const dropdown = document.getElementById('notif-dropdown');
-            dropdown.classList.toggle('hidden');
-            dropdown.classList.toggle('flex');
-            
-            if (!dropdown.classList.contains('hidden')) {
-                unreadNotifCount = 0;
-                updateNotifBadge();
-            }
+            dropdown.classList.toggle('hidden'); dropdown.classList.toggle('flex');
+            if (!dropdown.classList.contains('hidden')) { unreadNotifCount = 0; updateNotifBadge(); }
         }
 
         function updateNotifBadge() {
             const badge = document.getElementById('notif-badge');
-            if (unreadNotifCount > 0) {
-                badge.innerText = unreadNotifCount > 99 ? '99+' : unreadNotifCount;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
+            if (unreadNotifCount > 0) { badge.innerText = unreadNotifCount > 99 ? '99+' : unreadNotifCount; badge.classList.remove('hidden'); } 
+            else { badge.classList.add('hidden'); }
         }
 
-        function clearNotifications() {
-            notificationsList = [];
-            unreadNotifCount = 0;
-            updateNotifBadge();
-            renderNotificationList();
-        }
+        function clearNotifications() { notificationsList = []; unreadNotifCount = 0; updateNotifBadge(); renderNotificationList(); }
 
         function renderNotificationList() {
             const list = document.getElementById('notif-list');
-            if (notificationsList.length === 0) {
-                list.innerHTML = '<div class="text-center text-xs text-gray-400 py-6">Chưa có thông báo nào</div>';
-                return;
-            }
-
+            if (notificationsList.length === 0) { list.innerHTML = '<div class="text-center text-xs text-gray-400 py-6">Chưa có thông báo nào</div>'; return; }
             list.innerHTML = notificationsList.map(n => {
-                let icon, colorClass, bgClass;
-                if (n.type === 'error') {
-                    icon = 'fa-triangle-exclamation'; colorClass = 'text-red-600'; bgClass = 'bg-red-50 border-red-100';
-                } else if (n.type === 'warning') {
-                    icon = 'fa-bell'; colorClass = 'text-yellow-600'; bgClass = 'bg-yellow-50 border-yellow-100';
-                } else {
-                    icon = 'fa-circle-info'; colorClass = 'text-blue-600'; bgClass = 'bg-blue-50 border-blue-100';
-                }
-
-                return `
-                    <div class="p-2.5 rounded-lg ${bgClass} border mb-1 flex gap-2.5 items-start">
-                        <div class="${colorClass} mt-0.5"><i class="fa-solid ${icon} text-sm"></i></div>
-                        <div class="flex-1">
-                            <p class="text-[11px] md:text-xs text-gray-800 leading-snug font-medium">${n.message}</p>
-                            <p class="text-[9px] text-gray-500 mt-1"><i class="fa-regular fa-clock mr-1"></i>${n.time}</p>
-                        </div>
-                    </div>
-                `;
+                let icon = n.type === 'error' ? 'fa-triangle-exclamation' : n.type === 'warning' ? 'fa-bell' : 'fa-circle-info';
+                let colorClass = n.type === 'error' ? 'text-red-600' : n.type === 'warning' ? 'text-yellow-600' : 'text-blue-600';
+                let bgClass = n.type === 'error' ? 'bg-red-50 border-red-100' : n.type === 'warning' ? 'bg-yellow-50 border-yellow-100' : 'bg-blue-50 border-blue-100';
+                return `<div class="p-2.5 rounded-lg ${bgClass} border mb-1 flex gap-2.5 items-start"><div class="${colorClass} mt-0.5"><i class="fa-solid ${icon} text-sm"></i></div><div class="flex-1"><p class="text-[11px] md:text-xs text-gray-800 leading-snug font-medium">${n.message}</p><p class="text-[9px] text-gray-500 mt-1"><i class="fa-regular fa-clock mr-1"></i>${n.time}</p></div></div>`;
             }).join('');
         }
 
         document.addEventListener('click', function(event) {
-            const dropdown = document.getElementById('notif-dropdown');
-            const btn = document.getElementById('btn-notif');
-            if (!btn.contains(event.target) && !dropdown.contains(event.target)) {
-                dropdown.classList.add('hidden');
-                dropdown.classList.remove('flex');
-            }
+            const dropdown = document.getElementById('notif-dropdown'); const btn = document.getElementById('btn-notif');
+            if (!btn.contains(event.target) && !dropdown.contains(event.target)) { dropdown.classList.add('hidden'); dropdown.classList.remove('flex'); }
         });
 
-
-        // --- 3. CÁC HÀM XỬ LÝ (Auth, Routing, User Location) ---
         function initLoginOptions() {
             const select = document.getElementById('login-account');
-            select.innerHTML = '<option value="admin" class="font-bold">Quản trị viên (Admin Hệ Thống)</option>';
-            select.innerHTML += '<option value="115" class="font-bold text-red-600">TRUNG TÂM CẤP CỨU 115 TPHCM</option>';
-            hospitalsData.forEach(h => {
-                select.innerHTML += `<option value="${h.id}">Bệnh viện: ${h.name}</option>`;
-            });
+            select.innerHTML = '<option value="admin" class="font-bold">Quản trị viên (Admin Hệ Thống)</option><option value="115" class="font-bold text-red-600">TRUNG TÂM CẤP CỨU 115 TPHCM</option>';
+            hospitalsData.forEach(h => { select.innerHTML += `<option value="${h.id}">Bệnh viện: ${h.name}</option>`; });
         }
         initLoginOptions();
 
@@ -831,205 +523,134 @@
         window.closeLoginModal = function() { document.getElementById('login-modal').classList.add('hidden'); };
 
         window.handleLogin = function() {
-            const accType = document.getElementById('login-account').value;
-            const pass = document.getElementById('login-pass').value;
+            const accType = document.getElementById('login-account').value; const pass = document.getElementById('login-pass').value;
+            if (pass !== '115') { alert("Mật khẩu không đúng! (Gợi ý: Mật khẩu thử nghiệm là '115')"); return; }
 
-            if (pass !== '115') {
-                alert("Mật khẩu không đúng! (Gợi ý: Mật khẩu thử nghiệm là '115')");
-                return;
-            }
+            if (accType === '115') { loggedInUser = { role: '115', name: 'Trung Tâm Cấp Cứu 115', id: null }; } 
+            else if (accType === 'admin') { loggedInUser = { role: 'admin', name: 'Admin Điều phối', id: null }; } 
+            else { const h = hospitalsData.find(x => x.id === parseInt(accType)); loggedInUser = { role: 'hospital', id: h.id, name: h.name, lat: h.lat, lng: h.lng }; }
 
-            if (accType === '115') {
-                loggedInUser = { role: '115', name: 'Trung Tâm Cấp Cứu 115', id: null };
-            } else if (accType === 'admin') {
-                loggedInUser = { role: 'admin', name: 'Admin Điều phối', id: null };
-            } else {
-                const hId = parseInt(accType);
-                const hospital = hospitalsData.find(h => h.id === hId);
-                loggedInUser = { role: 'hospital', id: hId, name: hospital.name, lat: hospital.lat, lng: hospital.lng };
-            }
-
-            closeLoginModal();
-            updateAuthUI();
-            renderData();
-            
-            // Xử lý mở vị trí bệnh viện khi đăng nhập
+            closeLoginModal(); updateAuthUI(); renderData();
             if (loggedInUser && loggedInUser.role === 'hospital') {
                 setTimeout(() => {
                     map.flyTo([loggedInUser.lat, loggedInUser.lng], 15, { duration: 1.5 });
                     const activeMarkerObj = markers.find(m => m.id === loggedInUser.id);
-                    if (activeMarkerObj) {
-                        activeMarkerObj.marker.openPopup();
-                    }
+                    if (activeMarkerObj) activeMarkerObj.marker.openPopup();
                 }, 300);
             }
-
             showToast(`Đăng nhập thành công: ${loggedInUser.name}`, 'info');
         };
 
-        window.handleLogout = function() {
-            loggedInUser = null;
-            updateAuthUI();
-            renderData();
-            showToast('Đã đăng xuất khỏi hệ thống.', 'info');
-        };
+        window.handleLogout = function() { loggedInUser = null; updateAuthUI(); renderData(); showToast('Đã đăng xuất khỏi hệ thống.', 'info'); };
 
         function toggleMainView() {
-            const mainView = document.getElementById('main-view');
-            const dashView = document.getElementById('dashboard-view');
-            const btnToggle = document.getElementById('btn-toggle-view');
-            const headerTitleMain = document.getElementById('header-title-main');
-            const headerTitleMobile = document.getElementById('header-title-mobile');
-            const headerStats = document.getElementById('header-stats');
+            const mainView = document.getElementById('main-view'); const dashView = document.getElementById('dashboard-view');
+            const btnToggle = document.getElementById('btn-toggle-view'); const headerTitleMain = document.getElementById('header-title-main');
+            const headerTitleMobile = document.getElementById('header-title-mobile'); const headerStats = document.getElementById('header-stats');
 
             if (currentView === 'map') {
                 currentView = 'dashboard';
-                mainView.classList.add('hidden');
-                mainView.classList.remove('flex');
-                dashView.classList.remove('hidden');
-                dashView.classList.add('flex');
-                
+                mainView.classList.add('hidden'); mainView.classList.remove('flex');
+                dashView.classList.remove('hidden'); dashView.classList.add('flex');
                 headerTitleMain.innerText = loggedInUser.role === '115' ? "ĐIỀU PHỐI CẤP CỨU 115" : "DASHBOARD QUẢN LÝ CA CẤP CỨU";
-                headerTitleMobile.innerText = "DASHBOARD";
-                headerStats.classList.add('hidden');
-                
+                headerTitleMobile.innerText = "DASHBOARD"; headerStats.classList.add('hidden');
                 btnToggle.innerHTML = `<i class="fa-solid fa-map md:mr-1"></i><span class="hidden md:inline">Bản đồ Mạng lưới</span>`;
-                btnToggle.classList.replace('bg-orange-500', 'bg-blue-500');
-                btnToggle.classList.replace('hover:bg-orange-600', 'hover:bg-blue-600');
-
-                initDashboardMap();
-                renderDashboardCases();
+                btnToggle.classList.replace('bg-orange-500', 'bg-blue-500'); btnToggle.classList.replace('hover:bg-orange-600', 'hover:bg-blue-600');
+                initDashboardMap(); renderDashboardCases();
             } else {
                 currentView = 'map';
-                dashView.classList.add('hidden');
-                dashView.classList.remove('flex');
-                mainView.classList.remove('hidden');
-                mainView.classList.add('flex');
-                
+                dashView.classList.add('hidden'); dashView.classList.remove('flex');
+                mainView.classList.remove('hidden'); mainView.classList.add('flex');
                 headerTitleMain.innerText = "HỆ THỐNG ĐIỀU PHỐI CẤP CỨU ĐỘT QUỴ";
-                headerTitleMobile.innerText = "ĐIỀU PHỐI ĐỘT QUỴ";
-                headerStats.classList.remove('hidden');
-
+                headerTitleMobile.innerText = "ĐIỀU PHỐI ĐỘT QUỴ"; headerStats.classList.remove('hidden');
                 btnToggle.innerHTML = `<i class="fa-solid fa-table-columns md:mr-1"></i><span class="hidden md:inline">Quản lý Ca Cấp Cứu</span>`;
-                btnToggle.classList.replace('bg-blue-500', 'bg-orange-500');
-                btnToggle.classList.replace('hover:bg-blue-600', 'hover:bg-orange-600');
-                
+                btnToggle.classList.replace('bg-blue-500', 'bg-orange-500'); btnToggle.classList.replace('hover:bg-blue-600', 'hover:bg-orange-600');
                 setTimeout(() => { map.invalidateSize(); }, 100);
             }
         }
 
         function updateAuthUI() {
-            const btnLogin = document.getElementById('btn-login');
-            const userInfo = document.getElementById('user-info');
-            const btnToggleView = document.getElementById('btn-toggle-view');
-            const tierFilter = document.getElementById('filter-tier');
-            const strokeGuide = document.getElementById('stroke-guide-banner');
-            const legendTier1 = document.getElementById('legend-tier-1');
+            const btnLogin = document.getElementById('btn-login'); const userInfo = document.getElementById('user-info');
+            const btnToggleView = document.getElementById('btn-toggle-view'); const tierFilter = document.getElementById('filter-tier');
+            const strokeGuide = document.getElementById('stroke-guide-banner'); const legendTier1 = document.getElementById('legend-tier-1');
+            const advancedFilters = document.getElementById('advanced-filters');
 
             if (loggedInUser) {
-                // UI Header Changes
                 btnLogin.innerHTML = `<i class="fa-solid fa-right-from-bracket md:mr-1"></i><span class="hidden md:inline">Đăng xuất</span>`;
-                btnLogin.onclick = handleLogout;
-                btnLogin.classList.replace('bg-blue-600', 'bg-slate-700');
-                btnLogin.classList.replace('hover:bg-blue-700', 'hover:bg-slate-800');
-                
+                btnLogin.onclick = handleLogout; btnLogin.classList.replace('bg-blue-600', 'bg-slate-700'); btnLogin.classList.replace('hover:bg-blue-700', 'hover:bg-slate-800');
                 const roleColor = loggedInUser.role === '115' ? 'text-red-400' : 'text-green-400';
                 userInfo.innerHTML = `<div class="text-[10px] text-slate-400">Xin chào,</div><div class="font-bold ${roleColor} text-xs md:text-sm truncate max-w-[100px] md:max-w-[200px]">${loggedInUser.name}</div>`;
-                userInfo.classList.remove('hidden');
-
-                btnToggleView.classList.remove('hidden');
-
-                Array.from(tierFilter.options).forEach(opt => {
-                    if (opt.value === '1') opt.style.display = 'block';
-                });
+                userInfo.classList.remove('hidden'); btnToggleView.classList.remove('hidden');
                 
-                if (strokeGuide) {
-                    strokeGuide.style.display = 'none';
-                    strokeGuide.classList.add('hidden');
-                }
-                
+                // Show filters for logged in users
+                advancedFilters.classList.remove('hidden');
+                advancedFilters.classList.add('block');
+
+                Array.from(tierFilter.options).forEach(opt => { if (opt.value === '1') opt.style.display = 'block'; });
+                if (strokeGuide) { strokeGuide.style.display = 'none'; strokeGuide.classList.add('hidden'); }
                 if (legendTier1) legendTier1.style.display = 'flex';
-
             } else {
-                // Return to Main View state for public
                 btnLogin.innerHTML = `<i class="fa-solid fa-user-lock md:mr-1"></i><span class="hidden md:inline">Đăng nhập</span>`;
-                btnLogin.onclick = openLoginModal;
-                btnLogin.classList.replace('bg-slate-700', 'bg-blue-600');
-                btnLogin.classList.replace('hover:bg-slate-800', 'hover:bg-blue-700');
+                btnLogin.onclick = openLoginModal; btnLogin.classList.replace('bg-slate-700', 'bg-blue-600'); btnLogin.classList.replace('hover:bg-slate-800', 'hover:bg-blue-700');
+                userInfo.classList.add('hidden'); btnToggleView.classList.add('hidden');
                 
-                userInfo.classList.add('hidden');
-                btnToggleView.classList.add('hidden');
+                // Hide filters on mobile for public users
+                advancedFilters.classList.add('hidden', 'md:block');
+                advancedFilters.classList.remove('block');
 
-                if (currentView === 'dashboard') {
-                    toggleMainView();
-                }
-
-                Array.from(tierFilter.options).forEach(opt => {
-                    if (opt.value === '1') opt.style.display = 'none';
-                });
-                
-                if (activeFilters.tier === '1') {
-                    activeFilters.tier = 'all';
-                    tierFilter.value = 'all';
-                }
-                
-                if (strokeGuide) {
-                    strokeGuide.style.display = 'block';
-                    strokeGuide.classList.remove('hidden');
-                }
-                
+                if (currentView === 'dashboard') toggleMainView();
+                Array.from(tierFilter.options).forEach(opt => { if (opt.value === '1') opt.style.display = 'none'; });
+                if (activeFilters.tier === '1') { activeFilters.tier = 'all'; tierFilter.value = 'all'; }
+                if (strokeGuide) { strokeGuide.style.display = 'block'; strokeGuide.classList.remove('hidden'); }
                 if (legendTier1) legendTier1.style.display = 'none';
             }
-            
-            clearRoute();
-            clearDashboardRoute();
-            setTimeout(() => { map.invalidateSize(); renderData(); }, 100);
+            clearRoute(); clearDashboardRoute(); setTimeout(() => { map.invalidateSize(); renderData(); }, 100);
         }
 
         // ==========================================
-        // TÍNH NĂNG DASHBOARD BỆNH VIỆN (NEW)
+        // TÍNH NĂNG DASHBOARD BỆNH VIỆN TĂNG CƯỜNG
         // ==========================================
-        let dashMap = null;
-        let dashRoutingControl = null;
-        let dashPatientMarker = null;
-        let dashHospitalMarker = null;
+        let dashMap = null; let dashRoutingControl = null; let dashPatientMarker = null; let dashHospitalMarker = null;
 
         function initDashboardMap() {
-            if (dashMap !== null) {
-                setTimeout(() => dashMap.invalidateSize(), 100);
-                return; // Already initialized
-            }
-
+            if (dashMap !== null) { setTimeout(() => dashMap.invalidateSize(), 100); return; }
             dashMap = L.map('dashboard-map', { zoomControl: false }).setView([10.8231, 106.6297], 11);
             L.control.zoom({ position: 'topright' }).addTo(dashMap);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(dashMap);
-            
-            // Fix map not rendering full tiles immediately
             setTimeout(() => dashMap.invalidateSize(), 100);
         }
+
+        window.switchDashTab = function(tab) {
+            currentDashTab = tab;
+            document.getElementById('dash-tab-incoming').className = tab === 'incoming' ? 'text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-800 text-white shadow-sm transition-colors' : 'text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors';
+            document.getElementById('dash-tab-history').className = tab === 'history' ? 'text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-800 text-white shadow-sm transition-colors' : 'text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors';
+            renderDashboardCases();
+            clearDashboardRoute();
+        };
 
         function renderDashboardCases() {
             const listContainer = document.getElementById('dash-case-list');
             listContainer.innerHTML = '';
             
-            // Lọc ra các ca thuộc về bệnh viện này (Nếu là admin hoặc 115 thì xem tất)
             let myCases = incomingCases;
             if (loggedInUser && loggedInUser.role === 'hospital') {
                 myCases = incomingCases.filter(c => c.hospitalId === loggedInUser.id);
             }
 
-            document.getElementById('dash-case-count').innerText = myCases.length;
+            const incomingList = myCases.filter(c => c.status === 'incoming');
+            const historyList = myCases.filter(c => c.status !== 'incoming');
 
-            if(myCases.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-40 text-slate-400">
-                        <i class="fa-solid fa-mug-hot text-3xl mb-2 text-slate-300"></i>
-                        <p class="text-sm font-medium">Hiện không có ca cấp cứu nào đang tới.</p>
-                    </div>`;
+            document.getElementById('count-incoming').innerText = incomingList.length;
+            document.getElementById('count-history').innerText = historyList.length;
+
+            const displayCases = currentDashTab === 'incoming' ? incomingList : historyList;
+
+            if(displayCases.length === 0) {
+                listContainer.innerHTML = `<div class="flex flex-col items-center justify-center h-40 text-slate-400"><i class="fa-solid ${currentDashTab === 'incoming' ? 'fa-mug-hot' : 'fa-folder-open'} text-3xl mb-2 text-slate-300"></i><p class="text-sm font-medium">Hiện không có ca cấp cứu nào.</p></div>`;
                 return;
             }
 
-            myCases.forEach(c => {
+            displayCases.forEach(c => {
                 const isIncoming = c.status === 'incoming';
                 const isCriticalETA = isIncoming && c.eta <= 5 && c.eta > 0;
                 
@@ -1037,9 +658,10 @@
                 if (isIncoming) {
                     statusColor = isCriticalETA ? 'bg-red-600 text-white animate-pulse' : 'bg-orange-100 text-orange-700';
                     statusText = isCriticalETA ? '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Báo động đỏ' : '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Đang tới';
+                } else if (c.status === 'accepted') {
+                    statusColor = 'bg-green-100 text-green-700'; statusText = '<i class="fa-solid fa-check mr-1"></i> Đã tiếp nhận';
                 } else {
-                    statusColor = 'bg-green-100 text-green-700';
-                    statusText = '<i class="fa-solid fa-check mr-1"></i> Đã nhận';
+                    statusColor = 'bg-slate-200 text-slate-600'; statusText = '<i class="fa-solid fa-ban mr-1"></i> Đã từ chối';
                 }
                 
                 let sympTags = c.symptoms.map(s => {
@@ -1049,28 +671,20 @@
                     return '';
                 }).join('');
 
-                const borderClass = isCriticalETA ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : (isIncoming ? 'border-red-200' : 'border-green-200');
+                const borderClass = isCriticalETA ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : (isIncoming ? 'border-orange-200' : 'border-slate-200');
                 const card = document.createElement('div');
-                card.className = `case-card bg-red-50/50 p-3 rounded-xl shadow-sm border ${borderClass} cursor-pointer hover:border-red-400 transition-all`;
+                card.className = `case-card ${isIncoming ? 'bg-orange-50/30' : 'bg-white'} p-3 rounded-xl shadow-sm border ${borderClass} cursor-pointer hover:border-red-400 transition-all`;
                 
-                // Chuẩn bị HTML cho CCCD và SDT Người thân
                 let extraInfoHtml = '';
                 if(c.cccd || c.relPhone) {
                     let cccdHtml = c.cccd ? `<div><i class="fa-regular fa-id-card text-slate-400 mr-1"></i>CCCD: <b class="text-slate-800">${c.cccd}</b></div>` : '<div></div>';
                     let relPhoneHtml = c.relPhone ? `<div><i class="fa-solid fa-users text-slate-400 mr-1"></i>N.Thân: <a href="tel:${c.relPhone}" class="font-bold text-green-600 hover:underline" onclick="event.stopPropagation()">${c.relPhone}</a></div>` : '<div></div>';
-                    
-                    extraInfoHtml = `
-                    <div class="grid grid-cols-2 gap-2 pt-2 mt-1 border-t border-slate-200">
-                        ${cccdHtml}
-                        ${relPhoneHtml}
-                    </div>`;
+                    extraInfoHtml = `<div class="grid grid-cols-2 gap-2 pt-2 mt-1 border-t border-slate-200">${cccdHtml}${relPhoneHtml}</div>`;
                 }
 
-                // Hiển thị viện đích (đặc biệt cho 115)
                 let destinationHtml = (loggedInUser && (loggedInUser.role === '115' || loggedInUser.role === 'admin')) 
                     ? `<div class="mb-1 text-[11px] text-gray-600"><i class="fa-solid fa-hospital text-gray-400 mr-1"></i>Đích đến: <b class="text-blue-700">${hospitalsData.find(h=>h.id===c.hospitalId)?.name}</b></div>` : '';
 
-                // Hiển thị ETA màu đỏ báo động nếu <= 5 phút
                 const etaDisplay = c.eta > 0 ? `${c.eta} phút` : 'Đã tới nơi';
                 const etaColorClass = isCriticalETA ? 'text-red-600 font-bold animate-pulse text-sm' : 'text-blue-600';
 
@@ -1084,7 +698,7 @@
                     <div class="bg-slate-50/80 border border-slate-100 rounded-lg p-2.5 mb-3 flex flex-col gap-2 text-[11px] text-slate-600">
                         <div class="grid grid-cols-2 gap-2">
                             <div><i class="fa-regular fa-clock text-slate-400 mr-1"></i>Báo lúc: <b class="text-slate-800">${c.submitTime || c.time}</b></div>
-                            <div><i class="fa-solid fa-location-arrow text-slate-400 mr-1"></i>Dự kiến đến: <b class="${etaColorClass}">${etaDisplay}</b></div>
+                            <div><i class="fa-solid fa-location-arrow text-slate-400 mr-1"></i>ETA: ${isIncoming ? `<b class="${etaColorClass}">${etaDisplay}</b>` : '<b>-</b>'}</div>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div><i class="fa-solid fa-truck-medical text-slate-400 mr-1"></i>Khởi phát: <b class="text-red-600">${c.onset || 'Không rõ'}</b></div>
@@ -1113,13 +727,8 @@
         window.updateCaseStatus = function(caseId, newStatus) {
             const cIndex = incomingCases.findIndex(c => c.id === caseId);
             if (cIndex > -1) {
-                if (newStatus === 'rejected') {
-                    incomingCases.splice(cIndex, 1); 
-                    showToast('Đã từ chối tiếp nhận ca bệnh.', 'warning');
-                } else {
-                    incomingCases[cIndex].status = newStatus;
-                    showToast('Đã xác nhận tiếp nhận ca bệnh!', 'info');
-                }
+                incomingCases[cIndex].status = newStatus; // Không xóa khỏi mảng, chỉ đổi status
+                showToast(newStatus === 'accepted' ? 'Đã tiếp nhận ca bệnh! Chuyển vào Lịch sử.' : 'Đã từ chối ca bệnh.', newStatus === 'accepted' ? 'info' : 'warning');
                 renderDashboardCases();
                 clearDashboardRoute();
             }
@@ -1129,6 +738,8 @@
             const hospital = hospitalsData.find(h => h.id === caseData.hospitalId);
             if (!hospital || !dashMap) return;
 
+            currentTrackingCaseId = caseData.id;
+
             document.getElementById('dash-map-overlay').classList.add('opacity-0', 'pointer-events-none');
             document.getElementById('btn-dash-clear-route').classList.remove('hidden');
             document.getElementById('btn-dash-clear-route').classList.add('flex');
@@ -1137,25 +748,16 @@
             if (dashPatientMarker) dashMap.removeLayer(dashPatientMarker);
             if (dashHospitalMarker) dashMap.removeLayer(dashHospitalMarker);
 
-            // Vẽ Hospital Marker (Đích)
-            const hIcon = L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div class="custom-marker marker-tier-3 marker-status-0" style="width: 32px; height: 32px;"><i class="fa-solid fa-building-circle-check"></i></div>`,
-                iconSize: [32, 32], iconAnchor: [16, 16]
-            });
+            // Vẽ Hospital Marker
+            const hIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="custom-marker marker-tier-3 marker-status-0" style="width: 32px; height: 32px;"><i class="fa-solid fa-building-circle-check"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16] });
             dashHospitalMarker = L.marker([hospital.lat, hospital.lng], {icon: hIcon}).addTo(dashMap).bindPopup(`<b>${hospital.name}</b>`);
 
-            // Vẽ Patient Marker (Nguồn)
-            const pIcon = L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white text-white flex items-center justify-center patient-marker-pulse shadow-xl"><i class="fa-solid fa-truck-medical text-xs"></i></div>`,
-                iconSize: [32, 32], iconAnchor: [16, 16]
-            });
-            dashPatientMarker = L.marker([caseData.patientLat, caseData.patientLng], {icon: pIcon, zIndexOffset: 1000}).addTo(dashMap).bindPopup(`<b>Ca cấp cứu: ${caseData.name}</b><br>Đang di chuyển...`);
+            // Vẽ Patient Marker
+            const pIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white text-white flex items-center justify-center patient-marker-pulse shadow-xl"><i class="fa-solid fa-truck-medical text-xs"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16] });
+            dashPatientMarker = L.marker([caseData.patientLat, caseData.patientLng], {icon: pIcon, zIndexOffset: 1000}).addTo(dashMap).bindPopup(`<b>Ca cấp cứu: ${caseData.name}</b><br>${caseData.status==='incoming'?'Đang di chuyển...':'Đã lưu trữ'}`);
             
             setTimeout(() => dashPatientMarker.openPopup(), 1000);
 
-            // Bật Routing (Giả lập tuyến đường xe cứu thương đang chạy)
             try {
                 dashRoutingControl = L.Routing.control({
                     waypoints: [ L.latLng(caseData.patientLat, caseData.patientLng), L.latLng(hospital.lat, hospital.lng) ],
@@ -1168,154 +770,81 @@
 
         window.clearDashboardRoute = function() {
             if (!dashMap) return; 
+            currentTrackingCaseId = null;
 
             if (dashRoutingControl) dashMap.removeControl(dashRoutingControl);
             if (dashPatientMarker) dashMap.removeLayer(dashPatientMarker);
             if (dashHospitalMarker) dashMap.removeLayer(dashHospitalMarker);
             
             document.querySelectorAll('.case-card').forEach(el => el.classList.remove('active'));
-            
             const overlay = document.getElementById('dash-map-overlay');
             if (overlay) overlay.classList.remove('opacity-0', 'pointer-events-none');
             
             const btnClear = document.getElementById('btn-dash-clear-route');
-            if (btnClear) {
-                btnClear.classList.add('hidden');
-                btnClear.classList.remove('flex');
-            }
-            
+            if (btnClear) { btnClear.classList.add('hidden'); btnClear.classList.remove('flex'); }
             dashMap.setView([10.8231, 106.6297], 11);
         };
         // ==========================================
 
-
         window.showRoute = function(destLat, destLng) {
-            if (!currentUserLat || !currentUserLng) {
-                showToast("Hệ thống chưa xác định được vị trí của bạn. Vui lòng bấm vào biểu tượng Tâm ngắm để lấy vị trí.", "warning");
-                return;
-            }
-            if (routingControl) {
-                map.removeControl(routingControl);
-            }
+            if (!currentUserLat || !currentUserLng) { showToast("Chưa xác định vị trí của bạn. Vui lòng bấm vào biểu tượng Tâm ngắm.", "warning"); return; }
+            if (routingControl) map.removeControl(routingControl);
             try {
                 routingControl = L.Routing.control({
                     waypoints: [ L.latLng(currentUserLat, currentUserLng), L.latLng(destLat, destLng) ],
-                    routeWhileDragging: false,
-                    addWaypoints: false,
-                    show: false,
-                    fitSelectedRoutes: true,
-                    lineOptions: { styles: [{color: '#8b5cf6', opacity: 0.8, weight: 6}] },
-                    createMarker: function() { return null; }
+                    routeWhileDragging: false, addWaypoints: false, show: false, fitSelectedRoutes: true,
+                    lineOptions: { styles: [{color: '#8b5cf6', opacity: 0.8, weight: 6}] }, createMarker: function() { return null; }
                 }).addTo(map);
-
-                document.getElementById('btn-clear-route').classList.remove('hidden');
-                document.getElementById('btn-clear-route').classList.add('flex');
-            } catch(e) { console.log("Lỗi tải bản đồ chỉ đường: ", e); }
+                document.getElementById('btn-clear-route').classList.remove('hidden'); document.getElementById('btn-clear-route').classList.add('flex');
+            } catch(e) { console.log("Lỗi tải chỉ đường: ", e); }
         };
 
         window.clearRoute = function() {
-            if (routingControl) {
-                map.removeControl(routingControl);
-                routingControl = null;
-            }
-            document.getElementById('btn-clear-route').classList.add('hidden');
-            document.getElementById('btn-clear-route').classList.remove('flex');
-            
-            if (currentUserLat) {
-                map.flyTo([currentUserLat, currentUserLng], 14);
-            }
+            if (routingControl) { map.removeControl(routingControl); routingControl = null; }
+            document.getElementById('btn-clear-route').classList.add('hidden'); document.getElementById('btn-clear-route').classList.remove('flex');
+            if (currentUserLat) map.flyTo([currentUserLat, currentUserLng], 14);
         };
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
+            const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
 
         let userMarker = null;
-        
         function initUserLocation() {
             const btnReLocate = document.getElementById('btn-re-locate');
-            if(btnReLocate) {
-                btnReLocate.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-lg"></i>';
-            }
+            if(btnReLocate) btnReLocate.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-lg"></i>';
 
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition((position) => {
-                    currentUserLat = position.coords.latitude;
-                    currentUserLng = position.coords.longitude;
-                    
+                    currentUserLat = position.coords.latitude; currentUserLng = position.coords.longitude;
                     if(btnReLocate) btnReLocate.innerHTML = '<i class="fa-solid fa-location-crosshairs text-lg"></i>';
-
-                    hospitalsData.forEach(h => {
-                        h.distance = calculateDistance(currentUserLat, currentUserLng, h.lat, h.lng);
-                    });
+                    hospitalsData.forEach(h => { h.distance = calculateDistance(currentUserLat, currentUserLng, h.lat, h.lng); });
 
                     const userIcon = L.divIcon({
                         className: 'custom-div-icon',
-                        html: `
-                            <div class="relative flex justify-center items-center w-8 h-8">
-                                <span class="absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75 animate-ping"></span>
-                                <span class="relative inline-flex rounded-full h-8 w-8 bg-purple-600 border-2 border-white shadow-lg justify-center items-center text-white">
-                                    <i class="fa-solid fa-user text-sm"></i>
-                                </span>
-                            </div>
-                        `,
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 16]
+                        html: `<div class="relative flex justify-center items-center w-8 h-8"><span class="absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75 animate-ping"></span><span class="relative inline-flex rounded-full h-8 w-8 bg-purple-600 border-2 border-white shadow-lg justify-center items-center text-white"><i class="fa-solid fa-user text-sm"></i></span></div>`,
+                        iconSize: [32, 32], iconAnchor: [16, 16]
                     });
                     
                     if (userMarker) map.removeLayer(userMarker);
-                    userMarker = L.marker([currentUserLat, currentUserLng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map)
-                        .bindPopup('<div class="font-bold text-sm text-purple-700"><i class="fa-solid fa-street-view mr-1"></i>Vị trí hiện tại của bạn</div>');
-                    
+                    userMarker = L.marker([currentUserLat, currentUserLng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map).bindPopup('<div class="font-bold text-sm text-purple-700"><i class="fa-solid fa-street-view mr-1"></i>Vị trí hiện tại của bạn</div>');
                     map.flyTo([currentUserLat, currentUserLng], 14, { duration: 1.5 });
-                    
-                    setTimeout(() => { if (userMarker) userMarker.openPopup(); }, 1500);
-                    renderData();
-
+                    setTimeout(() => { if (userMarker) userMarker.openPopup(); }, 1500); renderData();
                 }, (error) => {
-                    console.log("Không thể truy cập vị trí người dùng: ", error);
-                    showToast("Không thể lấy tọa độ GPS. Vui lòng kiểm tra quyền truy cập vị trí.", "warning");
+                    showToast("Không thể lấy tọa độ GPS. Kiểm tra quyền truy cập vị trí.", "warning");
                     if(btnReLocate) btnReLocate.innerHTML = '<i class="fa-solid fa-location-crosshairs text-red-500 text-lg"></i>';
-                }, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,           
-                    maximumAge: 0             
-                });
-            } else {
-                showToast("Trình duyệt không hỗ trợ định vị.", "error");
-                if(btnReLocate) btnReLocate.innerHTML = '<i class="fa-solid fa-location-crosshairs text-lg"></i>';
-            }
+                }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+            } else { showToast("Trình duyệt không hỗ trợ định vị.", "error"); if(btnReLocate) btnReLocate.innerHTML = '<i class="fa-solid fa-location-crosshairs text-lg"></i>'; }
         }
 
-        document.getElementById('btn-re-locate').addEventListener('click', () => {
-            initUserLocation();
-        });
+        document.getElementById('btn-re-locate').addEventListener('click', initUserLocation);
 
         function createCustomIcon(hospital) {
-            let tierClass = hospital.tier === 3 ? 'marker-tier-3' : 
-                            hospital.tier === 2 ? 'marker-tier-2' : 'marker-tier-1';
-            
-            let statusClass = '';
-            if (hospital.currentStatus === 2) {
-                statusClass = 'marker-status-2';
-            } else if (hospital.currentStatus === 1) {
-                statusClass = 'marker-status-1';
-            } else {
-                statusClass = 'marker-status-0';
-            }
-
-            // Highlight cho BV đang đăng nhập
-            let highlightClass = '';
-            if (loggedInUser && loggedInUser.role === 'hospital' && loggedInUser.id === hospital.id) {
-                highlightClass = 'marker-pulse-purple';
-            }
+            let tierClass = hospital.tier === 3 ? 'marker-tier-3' : hospital.tier === 2 ? 'marker-tier-2' : 'marker-tier-1';
+            let statusClass = hospital.currentStatus === 2 ? 'marker-status-2' : hospital.currentStatus === 1 ? 'marker-status-1' : 'marker-status-0';
+            let highlightClass = (loggedInUser && loggedInUser.role === 'hospital' && loggedInUser.id === hospital.id) ? 'marker-pulse-purple' : '';
 
             return L.divIcon({
                 className: 'custom-div-icon',
@@ -1325,520 +854,284 @@
             });
         }
 
-        // --- HÀM RENDER MAIN MAP---
         function renderData() {
-            markers.forEach(m => map.removeLayer(m.marker));
-            markers = [];
-            
-            const listContainer = document.getElementById('hospital-list');
-            listContainer.innerHTML = '';
-
+            markers.forEach(m => map.removeLayer(m.marker)); markers = [];
+            const listContainer = document.getElementById('hospital-list'); listContainer.innerHTML = '';
             let displayData = [...hospitalsData];
 
-            // Nếu không đăng nhập (người dân), chỉ hiện tầng 2 & 3
-            if (!loggedInUser) {
-                displayData = displayData.filter(h => h.tier >= 2);
-            }
-
-            if (activeFilters.tier !== 'all') {
-                displayData = displayData.filter(h => h.tier.toString() === activeFilters.tier);
-            }
-            if (activeFilters.rtpa) {
-                displayData = displayData.filter(h => h.rtpa);
-            }
-            if (activeFilters.evt) {
-                displayData = displayData.filter(h => h.evt);
-            }
-            
-            if (activeFilters.search) {
-                const term = activeFilters.search.toLowerCase();
-                displayData = displayData.filter(h => h.name.toLowerCase().includes(term));
-            }
+            if (!loggedInUser) displayData = displayData.filter(h => h.tier >= 2);
+            if (activeFilters.tier !== 'all') displayData = displayData.filter(h => h.tier.toString() === activeFilters.tier);
+            if (activeFilters.rtpa) displayData = displayData.filter(h => h.rtpa);
+            if (activeFilters.evt) displayData = displayData.filter(h => h.evt);
+            if (activeFilters.search) { const term = activeFilters.search.toLowerCase(); displayData = displayData.filter(h => h.name.toLowerCase().includes(term)); }
 
             let nearestPriorityHospital = null;
-            // Danh sách ID các bệnh viện không ưu tiên trong hệ thống đột quỵ người lớn
-            const nonPriorityIds = [4, 36, 56]; // 4: Nhi Đồng 2, 36: Nhi Đồng 1, 56: Viện Tim
+            const nonPriorityIds = [4, 36, 56]; 
 
             if (displayData.length > 0 && displayData[0].distance !== undefined) {
-                // 1. Sắp xếp danh sách chung theo khoảng cách và đẩy BV không ưu tiên xuống cuối
                 displayData.sort((a, b) => {
-                    const aNonPriority = nonPriorityIds.includes(a.id);
-                    const bNonPriority = nonPriorityIds.includes(b.id);
-                    if (aNonPriority && !bNonPriority) return 1;
-                    if (!aNonPriority && bNonPriority) return -1;
-                    return a.distance - b.distance;
+                    const aNP = nonPriorityIds.includes(a.id); const bNP = nonPriorityIds.includes(b.id);
+                    if (aNP && !bNP) return 1; if (!aNP && bNP) return -1; return a.distance - b.distance;
                 });
                 
                 if(!activeFilters.search && activeFilters.tier === 'all') {
-                    // Lọc ra các bệnh viện hợp lệ để xét Tuyến ưu tiên
                     const validHospitals = displayData.filter(h => !nonPriorityIds.includes(h.id));
-
-                    // Tìm BV Tầng 3 gần nhất
                     const nearestT3 = validHospitals.find(h => h.tier === 3);
-                    // Tìm BV Tầng 2 (có rtpa) gần nhất
                     const nearestT2 = validHospitals.find(h => h.tier === 2 && h.rtpa === true);
 
-                    // Xử lý so sánh khoảng cách: Ưu tiên Tầng 3 nếu khoảng cách đi xa hơn không quá 5km
-                    if (nearestT3 && nearestT2) {
-                        if (nearestT3.distance - nearestT2.distance <= 5) {
-                            nearestPriorityHospital = nearestT3;
-                        } else {
-                            nearestPriorityHospital = nearestT2;
-                        }
-                    } else if (nearestT3) {
-                        nearestPriorityHospital = nearestT3;
-                    } else if (nearestT2) {
-                        nearestPriorityHospital = nearestT2;
-                    }
+                    if (nearestT3 && nearestT2) { nearestPriorityHospital = (nearestT3.distance - nearestT2.distance <= 5) ? nearestT3 : nearestT2; } 
+                    else if (nearestT3) { nearestPriorityHospital = nearestT3; } else if (nearestT2) { nearestPriorityHospital = nearestT2; }
 
-                    if (nearestPriorityHospital) {
-                        displayData = displayData.filter(h => h.id !== nearestPriorityHospital.id);
-                        displayData.unshift(nearestPriorityHospital);
-                    }
+                    if (nearestPriorityHospital) { displayData = displayData.filter(h => h.id !== nearestPriorityHospital.id); displayData.unshift(nearestPriorityHospital); }
                 }
             } else {
-                // Đẩy nhóm không ưu tiên xuống cuối ngay cả khi chưa lấy được vị trí GPS
                 displayData.sort((a, b) => {
-                    const aNonPriority = nonPriorityIds.includes(a.id);
-                    const bNonPriority = nonPriorityIds.includes(b.id);
-                    if (aNonPriority && !bNonPriority) return 1;
-                    if (!aNonPriority && bNonPriority) return -1;
-                    return 0;
+                    const aNP = nonPriorityIds.includes(a.id); const bNP = nonPriorityIds.includes(b.id);
+                    if (aNP && !bNP) return 1; if (!aNP && bNP) return -1; return 0;
                 });
             }
 
-            const totalBase = !loggedInUser ? hospitalsData.filter(h => h.tier >= 2).length : hospitalsData.length;
-            document.getElementById('total-active').innerText = `${displayData.length}/${totalBase}`;
+            document.getElementById('total-active').innerText = `${displayData.length}/${!loggedInUser ? hospitalsData.filter(h => h.tier >= 2).length : hospitalsData.length}`;
 
             displayData.forEach(hospital => {
                 let markerOptions = { icon: createCustomIcon(hospital) };
-                // Đảm bảo marker của BV đang đăng nhập luôn nổi lên trên cùng
-                if (loggedInUser && loggedInUser.role === 'hospital' && loggedInUser.id === hospital.id) {
-                    markerOptions.zIndexOffset = 1000;
-                }
+                if (loggedInUser && loggedInUser.role === 'hospital' && loggedInUser.id === hospital.id) markerOptions.zIndexOffset = 1000;
+                
                 const marker = L.marker([hospital.lat, hospital.lng], markerOptions).addTo(map);
                 
-                // --- BẮT ĐẦU CẬP NHẬT GIAO DIỆN POPUP MỚI ---
-                let statusBoxHtml = '';
-                if (hospital.currentStatus === 0) {
-                    statusBoxHtml = `<div class="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 font-bold text-sm mb-3"><i class="fa-solid fa-circle-check text-green-600"></i> Sẵn sàng nhận bệnh</div>`;
-                } else if (hospital.currentStatus === 1) {
-                    statusBoxHtml = `<div class="flex items-center gap-1.5 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700 font-bold text-sm mb-3"><i class="fa-solid fa-spinner fa-spin text-yellow-600"></i> Đang xử lý ca cấp cứu</div>`;
-                } else {
-                    statusBoxHtml = `<div class="flex items-center gap-1.5 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 font-bold text-sm mb-3"><i class="fa-solid fa-triangle-exclamation text-red-600"></i> Quá tải / Tạm ngưng</div>`;
-                }
+                let statusBoxHtml = hospital.currentStatus === 0 ? `<div class="flex items-center gap-1.5 px-2 md:px-3 py-1.5 md:py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 font-bold text-[11px] md:text-sm mb-2 md:mb-3"><i class="fa-solid fa-circle-check text-green-600"></i> Sẵn sàng nhận bệnh</div>` : 
+                                    hospital.currentStatus === 1 ? `<div class="flex items-center gap-1.5 px-2 md:px-3 py-1.5 md:py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700 font-bold text-[11px] md:text-sm mb-2 md:mb-3"><i class="fa-solid fa-spinner fa-spin text-yellow-600"></i> Đang xử lý ca cấp cứu</div>` : 
+                                    `<div class="flex items-center gap-1.5 px-2 md:px-3 py-1.5 md:py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 font-bold text-[11px] md:text-sm mb-2 md:mb-3"><i class="fa-solid fa-triangle-exclamation text-red-600"></i> Quá tải / Tạm ngưng</div>`;
 
                 const rtpaClass = hospital.rtpa ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200';
                 const evtClass = hospital.evt ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200';
                 
-                const capabilitiesText = `
-                    <div class="grid grid-cols-12 gap-2 mb-3">
-                        <span class="col-span-5 flex items-center justify-center text-center px-1 py-1.5 text-[11px] md:text-xs rounded-lg border whitespace-nowrap ${rtpaClass}">Tiêu sợi huyết: ${hospital.rtpa ? 'Có' : 'Không'}</span>
-                        <span class="col-span-7 flex items-center justify-center text-center px-1 py-1.5 text-[11px] md:text-xs rounded-lg border whitespace-nowrap ${evtClass}">Can thiệp mạch não: ${hospital.evt ? 'Có' : 'Không'}</span>
-                    </div>
-                `;
+                // Thu nhỏ text bên trong Popup trên Mobile để không bị chiếm diện tích
+                const capabilitiesText = `<div class="grid grid-cols-12 gap-1 md:gap-2 mb-2 md:mb-3"><span class="col-span-5 flex items-center justify-center text-center px-1 py-1 md:py-1.5 text-[9px] md:text-xs rounded border whitespace-nowrap ${rtpaClass}">Tiêu sợi huyết: ${hospital.rtpa ? 'Có' : 'Không'}</span><span class="col-span-7 flex items-center justify-center text-center px-1 py-1 md:py-1.5 text-[9px] md:text-xs rounded border whitespace-nowrap ${evtClass}">Can thiệp mạch não: ${hospital.evt ? 'Có' : 'Không'}</span></div>`;
 
                 let actionBtnsHtml = '';
                 if (loggedInUser && loggedInUser.role === '115') {
-                    // Nút điều phối đặc biệt dành riêng cho 115
-                    actionBtnsHtml = `
-                        <div class="grid grid-cols-12 gap-2 mb-2">
-                            <a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-4 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[13px] py-2 px-1 rounded-lg hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a>
-                            <button class="col-span-8 flex items-center justify-center gap-1.5 bg-red-600 !text-white text-[13px] py-2 px-1 rounded-lg hover:bg-red-700 shadow-sm font-medium transition-colors" onclick="openNotifyModal(${hospital.id}, true)"><i class="fa-solid fa-truck-fast"></i> Điều phối về đây</button>
-                        </div>
-                    `;
+                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1.5 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[12px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a><button class="col-span-7 flex items-center justify-center gap-1.5 bg-red-600 !text-white text-[10.5px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-red-700 shadow-sm font-medium transition-colors whitespace-nowrap" onclick="openNotifyModal(${hospital.id}, true)"><i class="fa-solid fa-truck-fast"></i> Điều phối về đây</button></div>`;
                 } else if (loggedInUser && (loggedInUser.role === 'admin' || (loggedInUser.role === 'hospital' && loggedInUser.id === hospital.id))) {
-                    actionBtnsHtml = `
-                        <div class="grid grid-cols-12 gap-2 mb-2">
-                            <a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[13px] py-2 px-1 rounded-lg hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a>
-                            <button class="col-span-7 flex items-center justify-center gap-1.5 bg-[#eab308] !text-white text-[13px] py-2 px-1 rounded-lg hover:bg-yellow-600 shadow-sm font-medium transition-colors" onclick="openUpdateModal(${hospital.id})"><i class="fa-solid fa-triangle-exclamation"></i> Báo cáo Bệnh viện</button>
-                        </div>
-                    `;
+                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1.5 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[12px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a><button class="col-span-7 flex items-center justify-center gap-1.5 bg-[#eab308] !text-white text-[10.5px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-yellow-600 shadow-sm font-medium transition-colors whitespace-nowrap" onclick="openUpdateModal(${hospital.id})"><i class="fa-solid fa-triangle-exclamation"></i> Báo cáo Bệnh viện</button></div>`;
                 } else {
-                    actionBtnsHtml = `
-                        <div class="grid grid-cols-12 gap-2 mb-2">
-                            <a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[13px] py-2 px-1 rounded-lg hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a>
-                            <button class="col-span-7 flex items-center justify-center gap-1.5 bg-[#f97316] !text-white text-[13px] py-2 px-1 rounded-lg hover:bg-orange-600 shadow-sm font-medium transition-colors" onclick="openNotifyModal(${hospital.id})"><i class="fa-solid fa-bell"></i> Báo trước cho BV</button>
-                        </div>
-                    `;
+                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1.5 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1 bg-[#16a34a] !text-white text-[12px] md:text-[13px] py-1.5 md:py-2 px-1 rounded hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a><button class="col-span-7 flex items-center justify-center gap-1 bg-[#f97316] !text-white text-[9.5px] md:text-xs py-1.5 md:py-2 px-1 rounded hover:bg-orange-600 shadow-sm font-bold transition-colors whitespace-nowrap" onclick="openNotifyModal(${hospital.id})"><i class="fa-solid fa-bell"></i> Báo trước cho Bệnh viện</button></div>`;
                 }
 
-                const telemedBtn = (loggedInUser && hospital.tier === 3) ? 
-                    `<button class="w-full flex items-center justify-center gap-1.5 bg-[#2563eb] !text-white text-[13px] py-2 px-2 rounded-lg hover:bg-blue-700 shadow-sm font-medium transition-colors mt-2" onclick="showToast('Mô phỏng tính năng hội chẩn Video Call', 'info')"><i class="fa-solid fa-video"></i> Hội chẩn từ xa</button>` : '';
+                const telemedBtn = (loggedInUser && hospital.tier === 3) ? `<button class="w-full flex items-center justify-center gap-1.5 bg-[#2563eb] !text-white text-[13px] py-1.5 md:py-2 px-2 rounded-lg hover:bg-blue-700 shadow-sm font-medium transition-colors mt-2" onclick="openTelemed()"><i class="fa-solid fa-video"></i> Hội chẩn từ xa</button>` : '';
+                const noteHtml = hospital.incidentNote ? `<div class="mb-2 md:mb-3 p-2 md:p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-[10px] md:text-xs shadow-sm leading-tight"><b><i class="fa-solid fa-circle-exclamation"></i> Ghi chú sự cố:</b> ${hospital.incidentNote}</div>` : '';
 
-                const noteHtml = hospital.incidentNote ? `<div class="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs shadow-sm leading-tight"><b><i class="fa-solid fa-circle-exclamation"></i> Ghi chú sự cố:</b> ${hospital.incidentNote}</div>` : '';
-
-                const popupContent = `
-                    <div class="p-1 min-w-[290px]">
-                        <h3 class="font-bold text-gray-800 text-lg mb-1 pr-6 leading-tight">${hospital.name}</h3>
-                        <div class="text-gray-500 text-sm mb-3">Tầng điều trị: ${hospital.tier}</div>
-                        ${statusBoxHtml}
-                        ${capabilitiesText}
-                        ${noteHtml}
-                        ${actionBtnsHtml}
-                        ${telemedBtn}
-                    </div>
-                `;
-                // --- KẾT THÚC CẬP NHẬT GIAO DIỆN POPUP MỚI ---
+                // Thu nhỏ margin, padding trên mobile
+                const popupContent = `<div class="p-0.5 md:p-1 w-[250px] md:w-auto md:min-w-[290px]"><h3 class="font-bold text-gray-800 text-[15px] md:text-lg mb-0.5 md:mb-1 pr-5 leading-tight">${hospital.name}</h3><div class="text-gray-500 text-[11px] md:text-sm mb-2 md:mb-3">Tầng điều trị: ${hospital.tier}</div>${statusBoxHtml}${capabilitiesText}${noteHtml}${actionBtnsHtml}${telemedBtn}</div>`;
                 
-                marker.bindPopup(popupContent);
+                marker.bindPopup(popupContent, { autoPanPadding: [10, 10] }); // Giảm padding tự động pan để hiển thị vừa vặn
                 
-                marker.on('click', () => {
-                    showRoute(hospital.lat, hospital.lng);
+                marker.on('click', () => { 
+                    // Offset khi bấm trực tiếp trên bản đồ mobile
+                    if(window.innerWidth < 768) {
+                        map.flyTo([hospital.lat + 0.012, hospital.lng], map.getZoom(), { duration: 0.5 });
+                    }
+                    showRoute(hospital.lat, hospital.lng); 
                 });
-                
                 markers.push({ id: hospital.id, marker: marker });
 
-                // --- BẮT ĐẦU CÀI ĐẶT THẺ BÊN LIST ---
-                const tierColor = hospital.tier === 3 ? 'bg-red-100 text-red-700 border-red-200' : 
-                                  hospital.tier === 2 ? 'bg-orange-100 text-orange-700 border-orange-200' : 
-                                  'bg-blue-100 text-blue-700 border-blue-200';
-                
-                const statusDot = hospital.currentStatus === 0 ? 'bg-green-500' : 
-                                  hospital.currentStatus === 1 ? 'bg-yellow-500' : 'bg-red-500 animate-pulse';
-
+                // --- LIST ITEM HTML (Giữ nguyên) ---
+                const tierColor = hospital.tier === 3 ? 'bg-red-100 text-red-700 border-red-200' : hospital.tier === 2 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-blue-100 text-blue-700 border-blue-200';
+                const statusDot = hospital.currentStatus === 0 ? 'bg-green-500' : hospital.currentStatus === 1 ? 'bg-yellow-500' : 'bg-red-500 animate-pulse';
                 const noteIcon = hospital.incidentNote ? `<i class="fa-solid fa-circle-exclamation text-red-500 ml-1" title="${hospital.incidentNote}"></i>` : '';
-
-                // KHAI BÁO BIẾN TRƯỚC KHI SỬ DỤNG ĐỂ TRÁNH LỖI REFERENCE ERROR
                 const isNearestPriority = (hospital === nearestPriorityHospital && activeFilters.tier === 'all' && !activeFilters.search);
-                
-                const badgeText = hospital.tier === 3 ? "Tuyến ưu tiên gần nhất (Tầng 3 - Đột quỵ chuyên sâu)" : "Tuyến ưu tiên gần nhất (Tầng 2 - Tiêu sợi huyết)";
-                
-                const priorityBadge = isNearestPriority 
-                    ? `<div class="bg-green-600 text-white text-[10px] md:text-[11px] font-bold px-3 py-1.5 rounded-t-[6px] -mx-2.5 md:-mx-3 -mt-2.5 md:-mt-3 mb-2 flex items-center shadow-sm">
-                        <i class="fa-solid fa-truck-medical mr-2 animate-pulse"></i> ${badgeText}
-                       </div>` 
-                    : '';
-
-                const itemClasses = isNearestPriority 
-                    ? 'p-2.5 md:p-3 mb-3 border-2 border-green-500 rounded-lg bg-green-50 shadow-md cursor-pointer transition-colors relative' 
-                    : 'p-2.5 md:p-3 mb-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors bg-white';
-
-                const listItem = document.createElement('div');
-                listItem.className = itemClasses;
-                
+                const priorityBadge = isNearestPriority ? `<div class="bg-green-600 text-white text-[10px] md:text-[11px] font-bold px-3 py-1.5 rounded-t-[6px] -mx-2.5 md:-mx-3 -mt-2.5 md:-mt-3 mb-2 flex items-center shadow-sm"><i class="fa-solid fa-truck-medical mr-2 animate-pulse"></i> ${hospital.tier === 3 ? "Tuyến ưu tiên gần nhất (Tầng 3)" : "Tuyến ưu tiên gần nhất (Tầng 2)"}</div>` : '';
                 const distanceHtml = hospital.distance !== undefined ? `<span class="text-[10px] font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100"><i class="fa-solid fa-location-arrow mr-1"></i>${hospital.distance.toFixed(1)} km</span>` : '';
 
-                listItem.innerHTML = `
-                    ${priorityBadge}
-                    <div class="flex justify-between items-start mb-1.5">
-                        <h3 class="font-medium text-xs md:text-sm text-gray-800 line-clamp-1 pr-2">${hospital.name} ${noteIcon}</h3>
-                        <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${statusDot} mt-0.5 flex-shrink-0 border border-white shadow-sm" title="Trạng thái"></div>
-                    </div>
-                    <div class="flex items-center gap-1.5 mb-2 flex-wrap">
-                        <span class="text-[9px] md:text-[10px] px-1.5 py-0.5 rounded border ${tierColor}">Tầng ${hospital.tier}</span>
-                        ${distanceHtml}
-                        <a href="tel:${hospital.phone.replace(/\s+/g, '')}" onclick="event.stopPropagation()" class="text-[10px] text-green-600 hover:text-green-800 hover:underline font-medium"><i class="fa-solid fa-phone-volume mr-0.5"></i> ${hospital.phone}</a>
-                    </div>
-                    <div class="flex text-[9px] md:text-[10px] text-gray-500 gap-3 border-t pt-1.5">
-                        <span><i class="fa-solid fa-syringe mr-1 ${hospital.rtpa ? 'text-green-500' : 'text-gray-300'}"></i>Tiêu sợi huyết</span>
-                        <span><i class="fa-solid fa-microscope mr-1 ${hospital.evt ? 'text-green-500' : 'text-gray-300'}"></i>Can thiệp mạch não</span>
-                    </div>
-                `;
+                const listItem = document.createElement('div');
+                listItem.className = isNearestPriority ? 'p-2.5 md:p-3 mb-3 border-2 border-green-500 rounded-lg bg-green-50 shadow-md cursor-pointer transition-colors relative' : 'p-2.5 md:p-3 mb-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors bg-white';
+                listItem.innerHTML = `${priorityBadge}<div class="flex justify-between items-start mb-1.5"><h3 class="font-medium text-xs md:text-sm text-gray-800 line-clamp-1 pr-2">${hospital.name} ${noteIcon}</h3><div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${statusDot} mt-0.5 flex-shrink-0 border border-white shadow-sm" title="Trạng thái"></div></div><div class="flex items-center gap-1.5 mb-2 flex-wrap"><span class="text-[9px] md:text-[10px] px-1.5 py-0.5 rounded border ${tierColor}">Tầng ${hospital.tier}</span>${distanceHtml}<a href="tel:${hospital.phone.replace(/\s+/g, '')}" onclick="event.stopPropagation()" class="text-[10px] text-green-600 hover:text-green-800 hover:underline font-medium"><i class="fa-solid fa-phone-volume mr-0.5"></i> ${hospital.phone}</a></div><div class="flex text-[9px] md:text-[10px] text-gray-500 gap-3 border-t pt-1.5"><span><i class="fa-solid fa-syringe mr-1 ${hospital.rtpa ? 'text-green-500' : 'text-gray-300'}"></i>Tiêu sợi huyết</span><span><i class="fa-solid fa-microscope mr-1 ${hospital.evt ? 'text-green-500' : 'text-gray-300'}"></i>Can thiệp mạch não</span></div>`;
                 
                 listItem.onclick = () => {
                     if(window.innerWidth < 768) {
                         window.scrollTo({top: 0, behavior: 'smooth'});
+                        // Thuật toán Offset bản đồ trên mobile
+                        // Thay vì giữa màn hình, đẩy tọa độ bay lệch lên +0.012 độ Vĩ
+                        map.flyTo([hospital.lat + 0.012, hospital.lng], 14, { duration: 1 });
+                    } else {
+                        map.flyTo([hospital.lat, hospital.lng], 14, { duration: 1 });
                     }
-                    map.flyTo([hospital.lat, hospital.lng], 14, { duration: 1 });
-                    marker.openPopup();
+                    
+                    // Delay hiển thị Popup 300ms để hiệu ứng FlyTo có thời gian zoom mượt
+                    setTimeout(() => marker.openPopup(), 300);
                     showRoute(hospital.lat, hospital.lng); 
                 };
-
                 listContainer.appendChild(listItem);
             });
 
-            if(displayData.length === 0) {
-                listContainer.innerHTML = '<div class="text-center text-sm text-gray-400 p-4">Không tìm thấy cơ sở phù hợp.</div>';
-            }
+            if(displayData.length === 0) listContainer.innerHTML = '<div class="text-center text-sm text-gray-400 p-4">Không tìm thấy cơ sở phù hợp.</div>';
         }
 
-        // --- 4. SỰ KIỆN GIAO DIỆN LỌC & TÌM KIẾM ---
-        document.getElementById('search-hospital').addEventListener('input', (e) => {
-            activeFilters.search = e.target.value;
-            renderData();
-        });
-
-        document.getElementById('filter-tier').addEventListener('change', (e) => {
-            activeFilters.tier = e.target.value;
-            renderData();
-        });
-
+        document.getElementById('search-hospital').addEventListener('input', (e) => { activeFilters.search = e.target.value; renderData(); });
+        document.getElementById('filter-tier').addEventListener('change', (e) => { activeFilters.tier = e.target.value; renderData(); });
         document.querySelectorAll('.toggle-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const capability = e.target.dataset.capability;
-                activeFilters[capability] = !activeFilters[capability];
-                
-                if (activeFilters[capability]) {
-                    e.target.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
-                    e.target.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
-                } else {
-                    e.target.classList.add('bg-white', 'text-gray-700', 'border-gray-300');
-                    e.target.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-                }
+                const capability = e.target.dataset.capability; activeFilters[capability] = !activeFilters[capability];
+                if (activeFilters[capability]) { e.target.classList.remove('bg-white', 'text-gray-700', 'border-gray-300'); e.target.classList.add('bg-blue-600', 'text-white', 'border-blue-600'); } 
+                else { e.target.classList.add('bg-white', 'text-gray-700', 'border-gray-300'); e.target.classList.remove('bg-blue-600', 'text-white', 'border-blue-600'); }
                 renderData();
             });
         });
 
-        // --- CÁC HÀM XỬ LÝ SỰ CỐ (MODAL) ---
+        // --- GIAO DIỆN TELEMEDICINE ---
+        window.openTelemed = function() {
+            document.getElementById('telemed-modal').classList.remove('hidden');
+            document.getElementById('telemed-modal').classList.add('flex');
+            map.closePopup();
+        };
+        window.closeTelemed = function() {
+            document.getElementById('telemed-modal').classList.add('hidden');
+            document.getElementById('telemed-modal').classList.remove('flex');
+        };
+
+        // --- MODAL SỰ CỐ & THÔNG BÁO ---
         let currentNotifyHospitalId = null;
 
         window.openNotifyModal = function(id, is115 = false) {
-            const hospital = hospitalsData.find(h => h.id === id);
-            if (!hospital) return;
-            currentNotifyHospitalId = id;
+            const hospital = hospitalsData.find(h => h.id === id); if (!hospital) return;
+            currentNotifyHospitalId = id; document.getElementById('notify-hospital-name').innerText = hospital.name;
             
-            document.getElementById('notify-hospital-name').innerText = hospital.name;
-            
-            // Thay đổi Text theo role 115
             if (is115) {
                 document.getElementById('notify-modal-title').innerHTML = '<i class="fa-solid fa-truck-medical mr-2"></i>ĐIỀU PHỐI XE 115 ĐẾN BỆNH VIỆN';
                 document.getElementById('btn-submit-notify').innerHTML = '<i class="fa-solid fa-truck-fast"></i> ĐIỀU PHỐI CA NÀY';
-                document.getElementById('btn-submit-notify').classList.replace('bg-orange-600', 'bg-red-600');
-                document.getElementById('btn-submit-notify').classList.replace('hover:bg-orange-700', 'hover:bg-red-700');
+                document.getElementById('btn-submit-notify').classList.replace('bg-orange-600', 'bg-red-600'); document.getElementById('btn-submit-notify').classList.replace('hover:bg-orange-700', 'hover:bg-red-700');
             } else {
                 document.getElementById('notify-modal-title').innerHTML = '<i class="fa-solid fa-truck-medical mr-2"></i>Thông báo ca cấp cứu đang đến';
                 document.getElementById('btn-submit-notify').innerHTML = '<i class="fa-solid fa-paper-plane"></i> BÁO TRƯỚC CHO BỆNH VIỆN';
-                document.getElementById('btn-submit-notify').classList.replace('bg-red-600', 'bg-orange-600');
-                document.getElementById('btn-submit-notify').classList.replace('hover:bg-red-700', 'hover:bg-orange-700');
+                document.getElementById('btn-submit-notify').classList.replace('bg-red-600', 'bg-orange-600'); document.getElementById('btn-submit-notify').classList.replace('hover:bg-red-700', 'hover:bg-orange-700');
             }
             
-            // Reset form
-            document.getElementById('notify-name').value = '';
-            document.getElementById('notify-yob').value = '';
-            document.getElementById('notify-cccd').value = '';
-            document.getElementById('notify-phone').value = '';
-            document.getElementById('notify-relative-phone').value = '';
+            document.getElementById('notify-name').value = ''; document.getElementById('notify-yob').value = ''; document.getElementById('notify-cccd').value = ''; document.getElementById('notify-phone').value = ''; document.getElementById('notify-relative-phone').value = '';
             document.querySelectorAll('#notify-modal input[type="checkbox"]').forEach(cb => cb.checked = false);
-            
-            // Reset UI thời gian
-            document.querySelectorAll('input[name="quick_time"]').forEach(r => r.checked = false);
-            document.getElementById('specific-time-container').classList.add('hidden');
-            document.getElementById('quick-time-container').classList.remove('hidden');
-            document.getElementById('toggle-specific-time').classList.remove('hidden');
-            document.getElementById('notify-time').value = '';
-
-            document.getElementById('notify-modal').classList.remove('hidden');
-            map.closePopup();
+            document.querySelectorAll('input[name="quick_time"]').forEach(r => r.checked = false); document.getElementById('specific-time-container').classList.add('hidden'); document.getElementById('quick-time-container').classList.remove('hidden'); document.getElementById('toggle-specific-time').classList.remove('hidden'); document.getElementById('notify-time').value = '';
+            document.getElementById('notify-modal').classList.remove('hidden'); map.closePopup();
         };
 
-        window.closeNotifyModal = function() {
-            document.getElementById('notify-modal').classList.add('hidden');
-        };
-
-        window.showSpecificTimeInput = function() {
-            document.getElementById('specific-time-container').classList.remove('hidden');
-            document.getElementById('toggle-specific-time').classList.add('hidden');
-            document.querySelectorAll('input[name="quick_time"]').forEach(r => r.checked = false);
-            document.getElementById('notify-time').focus();
-        };
-
-        window.clearSpecificTime = function() {
-            document.getElementById('notify-time').value = '';
-            document.getElementById('specific-time-container').classList.add('hidden');
-            document.getElementById('toggle-specific-time').classList.remove('hidden');
-        };
+        window.closeNotifyModal = function() { document.getElementById('notify-modal').classList.add('hidden'); };
+        window.showSpecificTimeInput = function() { document.getElementById('specific-time-container').classList.remove('hidden'); document.getElementById('toggle-specific-time').classList.add('hidden'); document.querySelectorAll('input[name="quick_time"]').forEach(r => r.checked = false); document.getElementById('notify-time').focus(); };
+        window.clearSpecificTime = function() { document.getElementById('notify-time').value = ''; document.getElementById('specific-time-container').classList.add('hidden'); document.getElementById('toggle-specific-time').classList.remove('hidden'); };
 
         window.submitNotification = function() {
-            const name = document.getElementById('notify-name').value.trim();
-            const yob = document.getElementById('notify-yob').value.trim();
-            const cccd = document.getElementById('notify-cccd').value.trim();
-            const phone = document.getElementById('notify-phone').value.trim();
-            const relPhone = document.getElementById('notify-relative-phone').value.trim();
-            
-            const timeInput = document.getElementById('notify-time').value.trim();
-            const quickTime = document.querySelector('input[name="quick_time"]:checked');
-            let timeValue = "";
-            
-            if (quickTime) {
-                timeValue = quickTime.value;
-            } else if (timeInput) {
-                timeValue = timeInput;
-            }
+            const name = document.getElementById('notify-name').value.trim(); const yob = document.getElementById('notify-yob').value.trim();
+            const phone = document.getElementById('notify-phone').value.trim(); const relPhone = document.getElementById('notify-relative-phone').value.trim();
+            const timeInput = document.getElementById('notify-time').value.trim(); const quickTime = document.querySelector('input[name="quick_time"]:checked');
+            let timeValue = quickTime ? quickTime.value : (timeInput ? timeInput : "");
 
-            if (!name || !yob || !timeValue) {
-                showToast('Vui lòng nhập đầy đủ Họ tên, Năm sinh và Thời điểm xảy ra.', 'error');
-                return;
-            }
+            if (!name || !yob || !timeValue) { showToast('Vui lòng nhập đầy đủ Họ tên, Năm sinh và Thời điểm xảy ra.', 'error'); return; }
 
             const hospital = hospitalsData.find(h => h.id === currentNotifyHospitalId);
-            
             const pLat = currentUserLat ? currentUserLat + (Math.random() - 0.5) * 0.05 : hospital.lat - 0.02;
             const pLng = currentUserLng ? currentUserLng + (Math.random() - 0.5) * 0.05 : hospital.lng - 0.02;
-
             const submitTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
-            const newCase = {
-                id: 'case_' + Date.now(),
-                hospitalId: hospital.id,
-                name: name,
-                yob: yob,
-                cccd: cccd,
-                phone: phone,
-                relPhone: relPhone,
-                symptoms: Array.from(document.querySelectorAll('#notify-modal input[type="checkbox"]:checked')).map(cb => cb.value),
-                time: timeValue, 
-                submitTime: submitTimeStr, 
-                onset: timeValue, 
-                status: "incoming",
-                patientLat: pLat,
-                patientLng: pLng,
-                eta: Math.floor(Math.random() * 5 + 6), // Random thời gian từ 6 đến 10 phút để dễ trigger Báo động 5 phút
-                alerted5Min: false
-            };
+            incomingCases.unshift({
+                id: 'case_' + Date.now(), hospitalId: hospital.id, name: name, yob: yob, cccd: document.getElementById('notify-cccd').value.trim(),
+                phone: phone, relPhone: relPhone, symptoms: Array.from(document.querySelectorAll('#notify-modal input[type="checkbox"]:checked')).map(cb => cb.value),
+                time: timeValue, submitTime: submitTimeStr, onset: timeValue, status: "incoming", patientLat: pLat, patientLng: pLng,
+                eta: Math.floor(Math.random() * 5 + 6), alerted5Min: false
+            });
             
-            // Push vào mảng ngầm
-            incomingCases.unshift(newCase);
+            showToast(loggedInUser && loggedInUser.role === '115' ? `[TTCC 115] Đã điều xe chuyển ca cấp cứu đến ${hospital.name}!` : `Đã gửi thông báo ca cấp cứu đến ${hospital.name}!`, 'info');
+            if(relPhone) setTimeout(() => showToast(`Hệ thống tự động gửi SMS khẩn cấp tới SĐT người thân: ${relPhone}`, 'warning'), 1500);
             
-            if (loggedInUser && loggedInUser.role === '115') {
-                showToast(`[TTCC 115] Đã điều xe chuyển ca cấp cứu đến ${hospital.name}!`, 'info');
-            } else {
-                let phoneStr = phone ? ` (SĐT: ${phone})` : '';
-                showToast(`Đã gửi thông báo ca cấp cứu${phoneStr} đến ${hospital.name}!`, 'info');
-            }
-            
-            if(relPhone) {
-                const mapLink = `https://maps.google.com/?q=${hospital.lat},${hospital.lng}`;
-                console.log(`[SMS to ${relPhone}] CẢNH BÁO KHẨN: ${name} đang có dấu hiệu nghi ngờ đột quỵ. Đang được đưa tới ${hospital.name}. Vị trí: ${mapLink}`);
-                
-                setTimeout(() => {
-                    showToast(`Hệ thống đã tự động gửi SMS khẩn cấp tới SĐT người thân: ${relPhone}`, 'warning');
-                }, 1500);
-            }
-
-            closeNotifyModal();
-            // Cập nhật ngay Dashboard nếu đang mở ngầm
-            renderDashboardCases();
+            closeNotifyModal(); if(currentView === 'dashboard') renderDashboardCases();
         };
 
         window.openUpdateModal = function(id) {
-            const hospital = hospitalsData.find(h => h.id === id);
-            if (!hospital) return;
-
-            document.getElementById('modal-hospital-id').value = hospital.id;
-            document.getElementById('modal-hospital-name').innerText = hospital.name;
-            document.getElementById('modal-status').value = hospital.currentStatus;
-            document.getElementById('modal-note').value = hospital.incidentNote || '';
-
-            document.getElementById('update-modal').classList.remove('hidden');
-            map.closePopup(); 
+            const hospital = hospitalsData.find(h => h.id === id); if (!hospital) return;
+            document.getElementById('modal-hospital-id').value = hospital.id; document.getElementById('modal-hospital-name').innerText = hospital.name;
+            document.getElementById('modal-status').value = hospital.currentStatus; document.getElementById('modal-note').value = hospital.incidentNote || '';
+            document.getElementById('update-modal').classList.remove('hidden'); map.closePopup(); 
         };
 
-        window.closeUpdateModal = function() {
-            document.getElementById('update-modal').classList.add('hidden');
-        };
+        window.closeUpdateModal = function() { document.getElementById('update-modal').classList.add('hidden'); };
 
         window.saveUpdateStatus = function() {
-            const id = parseInt(document.getElementById('modal-hospital-id').value);
-            const status = parseInt(document.getElementById('modal-status').value);
-            const note = document.getElementById('modal-note').value;
-
-            const hospital = hospitalsData.find(h => h.id === id);
+            const id = parseInt(document.getElementById('modal-hospital-id').value); const status = parseInt(document.getElementById('modal-status').value);
+            const note = document.getElementById('modal-note').value; const hospital = hospitalsData.find(h => h.id === id);
+            
             if (hospital) {
-                hospital.currentStatus = status;
-                hospital.incidentNote = note;
-                hospital.manualOverride = true; 
-                
+                hospital.currentStatus = status; hospital.incidentNote = note; hospital.manualOverride = true; 
                 if(loggedInUser && (loggedInUser.role === 'admin' || loggedInUser.role === '115')) {
-                    if(status === 2) {
-                        showToast(`${hospital.name} vừa báo cáo Quá tải!`, 'error');
-                    } else if (status === 0) {
-                        showToast(`${hospital.name} đã sẵn sàng nhận bệnh.`, 'info');
-                    } else if (status === 1) {
-                        showToast(`${hospital.name} đang bận xử lý ca cấp cứu.`, 'warning');
-                    }
+                    if(status === 2) showToast(`${hospital.name} vừa báo cáo Quá tải!`, 'error');
+                    else if (status === 0) showToast(`${hospital.name} đã sẵn sàng nhận bệnh.`, 'info');
+                    else if (status === 1) showToast(`${hospital.name} đang bận xử lý ca cấp cứu.`, 'warning');
                 }
             }
-
-            closeUpdateModal();
-            renderData(); 
+            closeUpdateModal(); renderData(); 
         };
 
-        // --- 5. MÔ PHỎNG THỜI GIAN THỰC & ĐẾM NGƯỢC ETA ---
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN');
-        }, 1000);
+        // --- 5. MÔ PHỎNG THỜI GIAN THỰC ---
+        setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('vi-VN'); }, 1000);
 
         let simCounter = 0;
         setInterval(() => {
-            simCounter++;
-            let changed = false;
-            let needsDashUpdate = false;
+            simCounter++; let changed = false; let needsDashUpdate = false;
 
-            // 1. MÔ PHỎNG ĐẾM NGƯỢC ETA CỦA XE CẤP CỨU & BÁO ĐỘNG
+            // Xử lý đếm ngược ETA và Di chuyển Live Tracking
             incomingCases.forEach(c => {
                 if (c.status === 'incoming' && c.eta > 0) {
-                    // Cứ khoảng 16 giây thực tế thì ETA giảm 1 phút (tăng tốc độ mô phỏng)
                     if (simCounter % 2 === 0) { 
-                        c.eta -= 1;
-                        needsDashUpdate = true;
+                        c.eta -= 1; needsDashUpdate = true;
                         
-                        // KÍCH HOẠT BÁO ĐỘNG ĐỎ KHI CÒN 5 PHÚT VÀ CHƯA BÁO
+                        // FIX: MÔ PHỎNG XE DI CHUYỂN
+                        const hosp = hospitalsData.find(h => h.id === c.hospitalId);
+                        if (hosp) {
+                            // Nội suy tọa độ nhích dần về bệnh viện (di chuyển 15% quãng đường còn lại mỗi nhịp)
+                            c.patientLat += (hosp.lat - c.patientLat) * 0.15;
+                            c.patientLng += (hosp.lng - c.patientLng) * 0.15;
+
+                            // Cập nhật marker ngay lập tức trên dashboard map nếu đang theo dõi
+                            if (currentTrackingCaseId === c.id && dashPatientMarker && currentView === 'dashboard') {
+                                dashPatientMarker.setLatLng([c.patientLat, c.patientLng]);
+                                // FIX: Cập nhật điểm đầu của lộ trình để vẽ lại đường đi
+                                if (dashRoutingControl) {
+                                    dashRoutingControl.spliceWaypoints(0, 1, L.latLng(c.patientLat, c.patientLng));
+                                }
+                            }
+                        }
+
                         if (c.eta <= 5 && !c.alerted5Min) {
                             c.alerted5Min = true;
-                            // Chỉ hiển thị báo động nếu người đang đăng nhập là bệnh viện ĐÍCH
                             if (loggedInUser && loggedInUser.role === 'hospital' && loggedInUser.id === c.hospitalId) {
-                                showToast(`🚨 BÁO ĐỘNG ĐỎ: Xe cấp cứu chở bệnh nhân ${c.name} sẽ đến trong vòng ${c.eta} phút nữa. Đề nghị kích hoạt Code Stroke ngay!`, 'error');
+                                showToast(`🚨 BÁO ĐỘNG ĐỎ: Xe cấp cứu chở bệnh nhân ${c.name} sẽ đến trong vòng ${c.eta} phút nữa. Kích hoạt Code Stroke ngay!`, 'error');
                             }
                         }
                     }
                 }
             });
 
-            // 2. MÔ PHỎNG THAY ĐỔI TRẠNG THÁI CÁC BỆNH VIỆN
+            // Random thay đổi trạng thái bệnh viện
             hospitalsData.forEach(h => {
                 if (h.manualOverride) return;
-
                 if (Math.random() < 0.05) { 
                     const oldStatus = h.currentStatus;
-                    
-                    if (h.tier === 3) {
-                        h.currentStatus = Math.random() > 0.6 ? 2 : (Math.random() > 0.5 ? 1 : 0);
-                    } else {
-                        h.currentStatus = Math.random() > 0.8 ? 1 : 0;
-                    }
-
+                    h.currentStatus = h.tier === 3 ? (Math.random() > 0.6 ? 2 : (Math.random() > 0.5 ? 1 : 0)) : (Math.random() > 0.8 ? 1 : 0);
                     if (oldStatus !== h.currentStatus) {
                         changed = true;
-                        if (h.currentStatus === 2 && loggedInUser && (loggedInUser.role === 'admin' || loggedInUser.role === '115')) {
-                            showToast(`Hệ thống cảnh báo: ${h.name} bị quá tải!`, 'error');
-                        }
+                        if (h.currentStatus === 2 && loggedInUser && (loggedInUser.role === 'admin' || loggedInUser.role === '115')) showToast(`Hệ thống cảnh báo: ${h.name} bị quá tải!`, 'error');
                     }
                 }
             });
 
-            // Re-render Map nếu có thay đổi trạng thái
             if (changed && (!loggedInUser || loggedInUser.role !== 'hospital')) {
-                let openPopupId = null;
-                markers.forEach(m => {
-                    if (m.marker.isPopupOpen()) { openPopupId = m.id; }
-                });
-                
-                const center = map.getCenter();
-                const zoom = map.getZoom();
-
-                renderData(); 
-
-                map.setView(center, zoom, {animate: false});
-                
-                if (openPopupId !== null) {
-                    const activeMarker = markers.find(m => m.id === openPopupId);
-                    if (activeMarker) activeMarker.marker.openPopup();
-                }
+                let openPopupId = null; markers.forEach(m => { if (m.marker.isPopupOpen()) openPopupId = m.id; });
+                const center = map.getCenter(); const zoom = map.getZoom();
+                renderData(); map.setView(center, zoom, {animate: false});
+                if (openPopupId !== null) { const activeMarker = markers.find(m => m.id === openPopupId); if (activeMarker) activeMarker.marker.openPopup(); }
             }
 
-            // Re-render Dashboard nếu ETA bị giảm
-            if (needsDashUpdate && currentView === 'dashboard') {
-                renderDashboardCases();
-            }
+            if (needsDashUpdate && currentView === 'dashboard') renderDashboardCases();
 
         }, 8000); 
 
         // Khởi chạy 
-        updateAuthUI();
-        renderData();
-        initUserLocation();
+        updateAuthUI(); renderData(); initUserLocation();
 
     </script>
 </body>
