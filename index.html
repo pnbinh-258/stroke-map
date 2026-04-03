@@ -33,11 +33,57 @@
 
         .leaflet-routing-container { display: none !important; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; } ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-        .leaflet-popup-content-wrapper { border-radius: 12px; } .leaflet-popup-content { margin: 12px; width: max-content !important; max-width: 320px; }
-
+        
         .toast-enter { transform: translateX(100%); opacity: 0; } .toast-enter-active { transform: translateX(0); opacity: 1; transition: all 0.3s ease-out; } .toast-exit { transform: translateX(100%); opacity: 0; transition: all 0.3s ease-in; }
 
         .case-card.active { border-color: #ef4444; background-color: #fff1f2; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1), 0 2px 4px -1px rgba(239, 68, 68, 0.06); }
+
+        /* --- MODERN GOOGLE-MAPS STYLE POPUP --- */
+        .modern-popup .leaflet-popup-content-wrapper {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15) !important;
+            border: none;
+            padding: 6px;
+            transition: transform 0.3s ease; /* Hiệu ứng mượt khi dịch chuyển box */
+        }
+        
+        /* Container của phần mũi tên chỉ hướng */
+        .modern-popup .leaflet-popup-tip-container {
+            width: 30px !important;
+            height: 20px !important;
+            margin-left: -15px !important;
+            bottom: -12px !important;
+            overflow: visible !important;
+            z-index: -1; /* Đẩy xuống dưới để hòa trộn liền mạch với wrapper */
+        }
+        
+        /* Mũi tên chỉ hướng (Tail) */
+        .modern-popup .leaflet-popup-tip {
+            width: 18px !important;
+            height: 18px !important;
+            background: #ffffff !important;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1) !important;
+            transform: rotate(45deg) !important;
+            margin: 0 auto !important;
+            border-radius: 2px;
+        }
+        
+        /* Dynamic Offsets (Dịch chuyển Box qua trái/phải dựa vào vị trí màn hình) */
+        .modern-popup.shift-right .leaflet-popup-content-wrapper {
+            transform: translateX(25%); /* Box lệch phải, Đuôi chỉ ở góc dưới Tận cùng Bên Trái */
+        }
+        .modern-popup.shift-left .leaflet-popup-content-wrapper {
+            transform: translateX(-25%); /* Box lệch trái, Đuôi chỉ ở góc dưới Tận cùng Bên Phải */
+        }
+
+        .modern-popup .leaflet-popup-close-button {
+            color: #94a3b8 !important;
+            padding: 8px 10px 0 0 !important;
+            font-size: 20px !important;
+            z-index: 10;
+        }
+        .modern-popup .leaflet-popup-content { margin: 10px; width: max-content !important; max-width: 320px; }
     </style>
 </head>
 <body class="h-[100dvh] flex flex-col overflow-hidden">
@@ -116,7 +162,6 @@
                     <input type="text" id="search-hospital" class="w-full pl-9 pr-3 py-2 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border bg-gray-50" placeholder="Tìm kiếm tên bệnh viện...">
                 </div>
 
-                <!-- Advanced Filters (Hidden on Mobile by Default for Public) -->
                 <div id="advanced-filters" class="space-y-2 md:space-y-3 mt-3 hidden md:block">
                     <div class="flex gap-2 items-center">
                         <select id="filter-tier" class="flex-1 text-xs md:text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2 bg-gray-50 border">
@@ -133,7 +178,6 @@
             <div class="flex-1 overflow-y-auto p-2 md:p-3 pb-8 md:pb-3 bg-gray-50/50" id="hospital-list"></div>
         </aside>
 
-        <!-- Increased Mobile Map Height from 45vh to 55vh -->
         <main class="w-full md:w-[70%] relative h-[55vh] md:h-auto order-1 md:order-2 flex-shrink-0 z-[0]">
             <div id="map"></div>
             
@@ -582,7 +626,6 @@
                 userInfo.innerHTML = `<div class="text-[10px] text-slate-400">Xin chào,</div><div class="font-bold ${roleColor} text-xs md:text-sm truncate max-w-[100px] md:max-w-[200px]">${loggedInUser.name}</div>`;
                 userInfo.classList.remove('hidden'); btnToggleView.classList.remove('hidden');
                 
-                // Show filters for logged in users
                 advancedFilters.classList.remove('hidden');
                 advancedFilters.classList.add('block');
 
@@ -594,7 +637,6 @@
                 btnLogin.onclick = openLoginModal; btnLogin.classList.replace('bg-slate-700', 'bg-blue-600'); btnLogin.classList.replace('hover:bg-slate-800', 'hover:bg-blue-700');
                 userInfo.classList.add('hidden'); btnToggleView.classList.add('hidden');
                 
-                // Hide filters on mobile for public users
                 advancedFilters.classList.add('hidden', 'md:block');
                 advancedFilters.classList.remove('block');
 
@@ -825,7 +867,8 @@
                     const userIcon = L.divIcon({
                         className: 'custom-div-icon',
                         html: `<div class="relative flex justify-center items-center w-8 h-8"><span class="absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75 animate-ping"></span><span class="relative inline-flex rounded-full h-8 w-8 bg-purple-600 border-2 border-white shadow-lg justify-center items-center text-white"><i class="fa-solid fa-user text-sm"></i></span></div>`,
-                        iconSize: [32, 32], iconAnchor: [16, 16]
+                        iconSize: [32, 32], iconAnchor: [16, 16],
+                        popupAnchor: [0, -16]
                     });
                     
                     if (userMarker) map.removeLayer(userMarker);
@@ -850,7 +893,8 @@
                 className: 'custom-div-icon',
                 html: `<div class="custom-marker ${tierClass} ${statusClass} ${highlightClass}" style="width: 26px; height: 26px;">${hospital.tier}</div>`,
                 iconSize: [26, 26],
-                iconAnchor: [13, 13]
+                iconAnchor: [13, 13],
+                popupAnchor: [0, -18] // Space for the tail
             });
         }
 
@@ -906,7 +950,6 @@
                 const rtpaClass = hospital.rtpa ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200';
                 const evtClass = hospital.evt ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200';
                 
-                // Thu nhỏ text bên trong Popup trên Mobile để không bị chiếm diện tích
                 const capabilitiesText = `<div class="grid grid-cols-12 gap-1 md:gap-2 mb-2 md:mb-3"><span class="col-span-5 flex items-center justify-center text-center px-1 py-1 md:py-1.5 text-[9px] md:text-xs rounded border whitespace-nowrap ${rtpaClass}">Tiêu sợi huyết: ${hospital.rtpa ? 'Có' : 'Không'}</span><span class="col-span-7 flex items-center justify-center text-center px-1 py-1 md:py-1.5 text-[9px] md:text-xs rounded border whitespace-nowrap ${evtClass}">Can thiệp mạch não: ${hospital.evt ? 'Có' : 'Không'}</span></div>`;
 
                 let actionBtnsHtml = '';
@@ -915,21 +958,31 @@
                 } else if (loggedInUser && (loggedInUser.role === 'admin' || (loggedInUser.role === 'hospital' && loggedInUser.id === hospital.id))) {
                     actionBtnsHtml = `<div class="grid grid-cols-12 gap-1.5 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[12px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a><button class="col-span-7 flex items-center justify-center gap-1.5 bg-[#eab308] !text-white text-[10.5px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-yellow-600 shadow-sm font-medium transition-colors whitespace-nowrap" onclick="openUpdateModal(${hospital.id})"><i class="fa-solid fa-triangle-exclamation"></i> Báo cáo Bệnh viện</button></div>`;
                 } else {
-                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1.5 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1 bg-[#16a34a] !text-white text-[12px] md:text-[13px] py-1.5 md:py-2 px-1 rounded hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a><button class="col-span-7 flex items-center justify-center gap-1 bg-[#f97316] !text-white text-[9.5px] md:text-xs py-1.5 md:py-2 px-1 rounded hover:bg-orange-600 shadow-sm font-bold transition-colors whitespace-nowrap" onclick="openNotifyModal(${hospital.id})"><i class="fa-solid fa-bell"></i> Báo trước cho Bệnh viện</button></div>`;
+                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1.5 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1 bg-[#16a34a] !text-white text-[12px] md:text-[13px] py-1.5 md:py-2 px-1 rounded hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a><button class="col-span-7 flex items-center justify-center gap-1 bg-[#f97316] !text-white text-[10.5px] md:text-[13px] py-1.5 md:py-2 px-1 rounded hover:bg-orange-600 shadow-sm font-bold transition-colors whitespace-nowrap" onclick="openNotifyModal(${hospital.id})"><i class="fa-solid fa-bell"></i> Báo trước cho Bệnh viện</button></div>`;
                 }
 
                 const telemedBtn = (loggedInUser && hospital.tier === 3) ? `<button class="w-full flex items-center justify-center gap-1.5 bg-[#2563eb] !text-white text-[13px] py-1.5 md:py-2 px-2 rounded-lg hover:bg-blue-700 shadow-sm font-medium transition-colors mt-2" onclick="openTelemed()"><i class="fa-solid fa-video"></i> Hội chẩn từ xa</button>` : '';
                 const noteHtml = hospital.incidentNote ? `<div class="mb-2 md:mb-3 p-2 md:p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-[10px] md:text-xs shadow-sm leading-tight"><b><i class="fa-solid fa-circle-exclamation"></i> Ghi chú sự cố:</b> ${hospital.incidentNote}</div>` : '';
 
-                // Thu nhỏ margin, padding trên mobile
-                const popupContent = `<div class="p-0.5 md:p-1 w-[250px] md:w-auto md:min-w-[290px]"><h3 class="font-bold text-gray-800 text-[15px] md:text-lg mb-0.5 md:mb-1 pr-5 leading-tight">${hospital.name}</h3><div class="text-gray-500 text-[11px] md:text-sm mb-2 md:mb-3">Tầng điều trị: ${hospital.tier}</div>${statusBoxHtml}${capabilitiesText}${noteHtml}${actionBtnsHtml}${telemedBtn}</div>`;
+                // Thêm class modern-popup
+                const popupContent = `
+                    <div class="w-[250px] md:w-auto md:min-w-[290px] relative">
+                        <h3 class="font-bold text-gray-800 text-[15px] md:text-lg mb-0.5 md:mb-1 pr-5 leading-tight">${hospital.name}</h3>
+                        <div class="text-gray-500 text-[11px] md:text-sm mb-2 md:mb-3">Tầng điều trị: ${hospital.tier}</div>
+                        ${statusBoxHtml}${capabilitiesText}${noteHtml}${actionBtnsHtml}${telemedBtn}
+                    </div>
+                `;
                 
-                marker.bindPopup(popupContent, { autoPanPadding: [10, 10] }); // Giảm padding tự động pan để hiển thị vừa vặn
+                marker.bindPopup(popupContent, { 
+                    className: 'modern-popup', 
+                    autoPanPadding: [20, 20] 
+                }); 
                 
                 marker.on('click', () => { 
-                    // Offset khi bấm trực tiếp trên bản đồ mobile
                     if(window.innerWidth < 768) {
-                        map.flyTo([hospital.lat + 0.012, hospital.lng], map.getZoom(), { duration: 0.5 });
+                        map.flyTo([hospital.lat + 0.015, hospital.lng], 14, { duration: 0.5 });
+                    } else {
+                        map.flyTo([hospital.lat, hospital.lng], 14, { duration: 0.5 });
                     }
                     showRoute(hospital.lat, hospital.lng); 
                 });
@@ -950,14 +1003,10 @@
                 listItem.onclick = () => {
                     if(window.innerWidth < 768) {
                         window.scrollTo({top: 0, behavior: 'smooth'});
-                        // Thuật toán Offset bản đồ trên mobile
-                        // Thay vì giữa màn hình, đẩy tọa độ bay lệch lên +0.012 độ Vĩ
-                        map.flyTo([hospital.lat + 0.012, hospital.lng], 14, { duration: 1 });
+                        map.flyTo([hospital.lat + 0.015, hospital.lng], 14, { duration: 1 });
                     } else {
                         map.flyTo([hospital.lat, hospital.lng], 14, { duration: 1 });
                     }
-                    
-                    // Delay hiển thị Popup 300ms để hiệu ứng FlyTo có thời gian zoom mượt
                     setTimeout(() => marker.openPopup(), 300);
                     showRoute(hospital.lat, hospital.lng); 
                 };
@@ -966,6 +1015,21 @@
 
             if(displayData.length === 0) listContainer.innerHTML = '<div class="text-center text-sm text-gray-400 p-4">Không tìm thấy cơ sở phù hợp.</div>';
         }
+
+        // Logic Dynamic Popup Shift (Chuyển popup sang trái/phải thông minh)
+        map.on('popupopen', function(e) {
+            var viewPx = map.latLngToContainerPoint(e.popup._latlng);
+            var popupEl = e.popup.getElement();
+            if (popupEl && popupEl.classList.contains('modern-popup')) {
+                if (viewPx.x > window.innerWidth / 2) {
+                    popupEl.classList.add('shift-left');
+                    popupEl.classList.remove('shift-right');
+                } else {
+                    popupEl.classList.add('shift-right');
+                    popupEl.classList.remove('shift-left');
+                }
+            }
+        });
 
         document.getElementById('search-hospital').addEventListener('input', (e) => { activeFilters.search = e.target.value; renderData(); });
         document.getElementById('filter-tier').addEventListener('change', (e) => { activeFilters.tier = e.target.value; renderData(); });
@@ -1079,19 +1143,21 @@
                     if (simCounter % 2 === 0) { 
                         c.eta -= 1; needsDashUpdate = true;
                         
-                        // FIX: MÔ PHỎNG XE DI CHUYỂN
+                        // MÔ PHỎNG XE DI CHUYỂN
                         const hosp = hospitalsData.find(h => h.id === c.hospitalId);
                         if (hosp) {
-                            // Nội suy tọa độ nhích dần về bệnh viện (di chuyển 15% quãng đường còn lại mỗi nhịp)
                             c.patientLat += (hosp.lat - c.patientLat) * 0.15;
                             c.patientLng += (hosp.lng - c.patientLng) * 0.15;
 
-                            // Cập nhật marker ngay lập tức trên dashboard map nếu đang theo dõi
                             if (currentTrackingCaseId === c.id && dashPatientMarker && currentView === 'dashboard') {
                                 dashPatientMarker.setLatLng([c.patientLat, c.patientLng]);
-                                // FIX: Cập nhật điểm đầu của lộ trình để vẽ lại đường đi
+                                
+                                // FIX: Tính toán và vẽ lại (rút ngắn dần) tuyến đường
                                 if (dashRoutingControl) {
-                                    dashRoutingControl.spliceWaypoints(0, 1, L.latLng(c.patientLat, c.patientLng));
+                                    dashRoutingControl.setWaypoints([
+                                        L.latLng(c.patientLat, c.patientLng),
+                                        L.latLng(hosp.lat, hosp.lng)
+                                    ]);
                                 }
                             }
                         }
