@@ -3,18 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bản đồ Mạng lưới Đột quỵ khu vực TP.HCM</title>
+    <title>Hệ thống Điều phối Đột quỵ & Phân tích - SYT TP.HCM</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Thư viện Chart.js cho Admin Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tải tuần tự thư viện Leaflet và các Plugin để khắc phục lỗi L is not defined -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
-        #map, #dashboard-map { height: 100%; width: 100%; z-index: 1; }
+        #map, #dashboard-map, #heatmap-canvas { height: 100%; width: 100%; z-index: 1; }
 
         .custom-marker { display: flex; justify-content: center; align-items: center; border-radius: 50%; border: 2px solid white; font-size: 14px; color: white; font-weight: bold; transition: all 0.3s ease; }
         .marker-tier-3 { background-color: #ef4444; } .marker-tier-2 { background-color: #f97316; } .marker-tier-1 { background-color: #3b82f6; }
@@ -40,69 +48,59 @@
 
         /* --- MODERN GOOGLE-MAPS STYLE POPUP --- */
         .modern-popup .leaflet-popup-content-wrapper {
-            background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.15) !important;
-            border: none;
-            padding: 6px;
-            transition: transform 0.3s ease; /* Hiệu ứng mượt khi dịch chuyển box */
+            background: #ffffff; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.15) !important; border: none; padding: 6px; transition: transform 0.3s ease;
         }
-        
-        /* Container của phần mũi tên chỉ hướng */
         .modern-popup .leaflet-popup-tip-container {
-            width: 30px !important;
-            height: 20px !important;
-            margin-left: -15px !important;
-            bottom: -12px !important;
-            overflow: visible !important;
-            z-index: -1; /* Đẩy xuống dưới để hòa trộn liền mạch với wrapper */
+            width: 30px !important; height: 20px !important; margin-left: -15px !important; bottom: -12px !important; overflow: visible !important; z-index: -1;
         }
-        
-        /* Mũi tên chỉ hướng (Tail) */
         .modern-popup .leaflet-popup-tip {
-            width: 18px !important;
-            height: 18px !important;
-            background: #ffffff !important;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.1) !important;
-            transform: rotate(45deg) !important;
-            margin: 0 auto !important;
-            border-radius: 2px;
+            width: 18px !important; height: 18px !important; background: #ffffff !important; box-shadow: 2px 2px 10px rgba(0,0,0,0.1) !important; transform: rotate(45deg) !important; margin: 0 auto !important; border-radius: 2px;
         }
-        
-        /* Dynamic Offsets (Dịch chuyển Box qua trái/phải dựa vào vị trí màn hình) */
-        .modern-popup.shift-right .leaflet-popup-content-wrapper {
-            transform: translateX(25%); /* Box lệch phải, Đuôi chỉ ở góc dưới Tận cùng Bên Trái */
-        }
-        .modern-popup.shift-left .leaflet-popup-content-wrapper {
-            transform: translateX(-25%); /* Box lệch trái, Đuôi chỉ ở góc dưới Tận cùng Bên Phải */
-        }
-
-        .modern-popup .leaflet-popup-close-button {
-            color: #94a3b8 !important;
-            padding: 8px 10px 0 0 !important;
-            font-size: 20px !important;
-            z-index: 10;
-        }
+        .modern-popup.shift-right .leaflet-popup-content-wrapper { transform: translateX(25%); }
+        .modern-popup.shift-left .leaflet-popup-content-wrapper { transform: translateX(-25%); }
+        .modern-popup .leaflet-popup-close-button { color: #94a3b8 !important; padding: 8px 10px 0 0 !important; font-size: 20px !important; z-index: 10; }
         .modern-popup .leaflet-popup-content { margin: 10px; width: max-content !important; max-width: 320px; }
+        
+        /* HIS Sync Animations */
+        .his-sync-pulse { animation: hisPulse 1.5s infinite; }
+        @keyframes hisPulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
 <body class="h-[100dvh] flex flex-col overflow-hidden">
 
     <div id="toast-container" class="fixed top-20 right-4 z-[5000] flex flex-col gap-2 pointer-events-none"></div>
 
+    <!-- MÀN HÌNH THEO DÕI RIÊNG CHO TÀI XẾ (DRIVER BANNER) -->
+    <div id="driver-banner" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] bg-blue-600 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 md:gap-4 w-11/12 max-w-md border border-white/20">
+        <div class="bg-white/20 w-10 h-10 flex items-center justify-center rounded-full animate-pulse flex-shrink-0"><i class="fa-solid fa-satellite-dish text-xl"></i></div>
+        <div class="flex-1 min-w-0">
+            <p class="text-[10px] uppercase font-bold text-blue-200 tracking-wider">Đang phát GPS Trực tiếp</p>
+            <p class="text-sm font-bold truncate">Đích: <span id="driver-dest-name">Đang định tuyến...</span></p>
+            <p class="text-xs">Dự kiến đến: <span id="driver-eta" class="font-bold text-yellow-300 text-sm">--</span> phút</p>
+        </div>
+        <button onclick="endDriverCase()" class="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg text-xs font-bold transition shadow-md flex-shrink-0"><i class="fa-solid fa-flag-checkered mr-1"></i>Đã tới</button>
+    </div>
+
     <!-- Header -->
     <header class="bg-slate-900 text-white p-3 md:p-4 shadow-md flex justify-between items-center z-[2000] relative flex-shrink-0">
         <div class="flex items-center gap-2 md:gap-3">
             <i class="fa-solid fa-brain text-red-500 text-xl md:text-2xl"></i>
             <div>
-                <h1 id="header-title-main" class="hidden md:block text-xl font-bold tracking-tight">HỆ THỐNG ĐIỀU PHỐI CẤP CỨU ĐỘT QUỴ</h1>
-                <h1 id="header-title-mobile" class="md:hidden text-sm font-bold tracking-tight">ĐIỀU PHỐI ĐỘT QUỴ</h1>
-                <p id="header-subtitle" class="text-[10px] md:text-xs text-slate-400">Dữ liệu mạng lưới TP.HCM</p>
+                <h1 id="header-title-main" class="hidden md:block text-xl font-bold tracking-tight" data-i18n="app_title">HỆ THỐNG ĐIỀU PHỐI CẤP CỨU ĐỘT QUỴ</h1>
+                <h1 id="header-title-mobile" class="md:hidden text-sm font-bold tracking-tight" data-i18n="app_title_mobile">ĐIỀU PHỐI ĐỘT QUỴ</h1>
+                <p id="header-subtitle" class="text-[10px] md:text-xs text-slate-400" data-i18n="app_subtitle">Dữ liệu mạng lưới TP.HCM</p>
             </div>
         </div>
         <div class="flex items-center gap-3 md:gap-4 lg:gap-6">
+            
+            <!-- Language Switcher -->
+            <div class="flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700">
+                <button onclick="changeLang('vi')" id="btn-lang-vi" class="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold text-white bg-slate-600 transition-all opacity-100" title="Tiếng Việt"><span class="text-sm">🇻🇳</span> VN</button>
+                <button onclick="changeLang('en')" id="btn-lang-en" class="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold text-white hover:bg-slate-700 transition-all opacity-50 hover:opacity-100" title="English"><span class="text-sm">🇬🇧</span> ENG</button>
+            </div>
+
             <div id="header-stats" class="hidden md:flex flex-col text-right">
-                <span class="text-sm text-slate-300">Cơ sở hiển thị</span>
+                <span class="text-sm text-slate-300" data-i18n="display_facilities">Cơ sở hiển thị</span>
                 <span class="text-xl font-bold text-green-400" id="total-active">-/-</span>
             </div>
             <div class="hidden lg:flex bg-slate-800 px-4 py-2 rounded-lg items-center gap-2 border border-slate-700">
@@ -117,41 +115,47 @@
                 </button>
                 <div id="notif-dropdown" class="absolute top-full right-0 mt-3 w-[280px] md:w-80 bg-white rounded-xl shadow-2xl z-[5000] hidden flex-col border border-gray-200 origin-top-right transition-all text-gray-800 before:content-[''] before:absolute before:-top-2 before:right-3 before:border-8 before:border-transparent before:border-b-white">
                     <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
-                        <h3 class="font-bold text-gray-800 text-sm"><i class="fa-solid fa-clock-rotate-left mr-1.5 text-blue-500"></i>Lịch sử thông báo</h3>
-                        <button onclick="clearNotifications()" class="text-[11px] font-medium text-slate-500 hover:text-red-600 transition-colors">Xóa tất cả</button>
+                        <h3 class="font-bold text-gray-800 text-sm"><i class="fa-solid fa-clock-rotate-left mr-1.5 text-blue-500"></i><span data-i18n="notif_history">Lịch sử thông báo</span></h3>
+                        <button onclick="clearNotifications()" class="text-[11px] font-medium text-slate-500 hover:text-red-600 transition-colors" data-i18n="notif_clear">Xóa tất cả</button>
                     </div>
                     <div id="notif-list" class="overflow-y-auto max-h-[60vh] md:max-h-80 p-2 space-y-1">
-                        <div class="text-center text-xs text-gray-400 py-6">Chưa có thông báo nào</div>
+                        <div class="text-center text-xs text-gray-400 py-6" data-i18n="notif_empty">Chưa có thông báo nào</div>
                     </div>
                 </div>
             </div>
 
             <div class="flex items-center gap-2 md:gap-3 ml-1 md:ml-2">
                 <div id="user-info" class="text-right hidden"></div>
-                <button id="btn-toggle-view" onclick="toggleMainView()" class="hidden bg-orange-500 hover:bg-orange-600 text-white p-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition shadow-md whitespace-nowrap flex items-center gap-1">
-                    <i class="fa-solid fa-table-columns md:mr-1"></i><span class="hidden md:inline">Quản lý Ca Cấp Cứu</span>
+                
+                <!-- Nút Phân tích Admin -->
+                <button id="btn-analytics" onclick="toggleAnalytics()" class="hidden bg-purple-600 hover:bg-purple-700 text-white p-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition shadow-md whitespace-nowrap flex items-center gap-1">
+                    <i class="fa-solid fa-chart-pie md:mr-1"></i><span class="hidden md:inline" data-i18n="btn_reports">Báo cáo SYT</span>
+                </button>
+
+                <button id="btn-toggle-view" onclick="toggleDashboard()" class="hidden bg-orange-500 hover:bg-orange-600 text-white p-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition shadow-md whitespace-nowrap flex items-center gap-1">
+                    <i class="fa-solid fa-table-columns md:mr-1"></i><span class="hidden md:inline" data-i18n="btn_manage_cases">Quản lý Ca Cấp Cứu</span>
                 </button>
                 <button id="btn-login" onclick="openLoginModal()" class="bg-blue-600 hover:bg-blue-700 p-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition shadow-md whitespace-nowrap flex items-center gap-1">
-                    <i class="fa-solid fa-user-lock md:mr-1"></i><span class="hidden md:inline">Đăng nhập</span>
+                    <i class="fa-solid fa-user-lock md:mr-1"></i><span class="hidden md:inline" data-i18n="btn_login">Đăng nhập</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- VIEW 1: DÀNH CHO NGƯỜI DÂN (DEFAULT) -->
+    <!-- VIEW 1: DÀNH CHO NGƯỜI DÂN & XEM BẢN ĐỒ CHUNG -->
     <div id="main-view" class="flex flex-col md:flex-row flex-1 overflow-hidden">
         
         <aside class="w-full md:w-[30%] flex-1 md:flex-none h-auto md:h-full bg-white shadow-xl z-10 flex flex-col min-h-0 flex-shrink-0 order-2 md:order-1 border-t md:border-t-0 md:border-r border-gray-200 overflow-hidden">
             <div class="hidden md:block p-4 border-b border-gray-100 bg-slate-50">
                 <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="bg-red-50 rounded p-2 border border-red-100">
-                        <div class="text-xl font-bold text-red-600">17</div><div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 3<br>(Can thiệp)</div>
+                        <div class="text-xl font-bold text-red-600">17</div><div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight" data-i18n="tier_3">Tầng 3<br>(Can thiệp)</div>
                     </div>
                     <div class="bg-orange-50 rounded p-2 border border-orange-100">
-                        <div class="text-xl font-bold text-orange-600">19</div><div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 2<br>(Tiêu sợi huyết)</div>
+                        <div class="text-xl font-bold text-orange-600">19</div><div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight" data-i18n="tier_2">Tầng 2<br>(Tiêu sợi huyết)</div>
                     </div>
                     <div class="bg-blue-50 rounded p-2 border border-blue-100">
-                        <div class="text-xl font-bold text-blue-600">51</div><div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight">Tầng 1<br>(Ban đầu)</div>
+                        <div class="text-xl font-bold text-blue-600">51</div><div class="text-[10px] text-gray-600 uppercase mt-1 leading-tight" data-i18n="tier_1">Tầng 1<br>(Ban đầu)</div>
                     </div>
                 </div>
             </div>
@@ -159,18 +163,21 @@
             <div class="p-3 md:p-4 border-b border-gray-100 bg-white">
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fa-solid fa-search text-gray-400 text-sm"></i></div>
-                    <input type="text" id="search-hospital" class="w-full pl-9 pr-3 py-2 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border bg-gray-50" placeholder="Tìm kiếm tên bệnh viện...">
+                    <input type="text" id="search-hospital" class="w-full pl-9 pr-3 py-2 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border bg-gray-50" placeholder="Tìm kiếm tên bệnh viện..." data-i18n-placeholder="search_placeholder">
                 </div>
 
                 <div id="advanced-filters" class="space-y-2 md:space-y-3 mt-3 hidden md:block">
                     <div class="flex gap-2 items-center">
                         <select id="filter-tier" class="flex-1 text-xs md:text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2 bg-gray-50 border">
-                            <option value="all">Tất cả các tầng</option><option value="3">Tầng 3 (Chuyên sâu)</option><option value="2">Tầng 2 (Cơ bản)</option><option value="1">Tầng 1 (Ban đầu)</option>
+                            <option value="all" data-i18n="filter_all">Tất cả các tầng</option>
+                            <option value="3" data-i18n="filter_t3">Tầng 3 (Chuyên sâu)</option>
+                            <option value="2" data-i18n="filter_t2">Tầng 2 (Cơ bản)</option>
+                            <option value="1" data-i18n="filter_t1">Tầng 1 (Ban đầu)</option>
                         </select>
                     </div>
                     <div class="flex gap-2">
-                        <button id="btn-rtpa" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="rtpa">Tiêu sợi huyết</button>
-                        <button id="btn-evt" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="evt">Can thiệp mạch não</button>
+                        <button id="btn-rtpa" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="rtpa" data-i18n="rtpa_label">Tiêu sợi huyết</button>
+                        <button id="btn-evt" class="flex-1 py-1.5 px-2 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 transition-colors toggle-btn" data-capability="evt" data-i18n="evt_label">Can thiệp mạch não</button>
                     </div>
                 </div>
             </div>
@@ -182,7 +189,7 @@
             <div id="map"></div>
             
             <button id="btn-clear-route" class="absolute top-4 left-4 z-[1000] bg-white text-red-600 px-3 py-2 rounded-md shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 hidden items-center gap-2 hover:bg-red-50 text-sm font-medium transition-all" onclick="clearRoute()">
-                <i class="fa-solid fa-route-slash"></i> Hủy dẫn đường
+                <i class="fa-solid fa-route-slash"></i> <span data-i18n="btn_cancel_route">Hủy dẫn đường</span>
             </button>
 
             <button id="btn-re-locate" class="absolute top-4 right-4 md:bottom-6 md:top-auto md:right-auto md:left-6 z-[1000] bg-white w-10 h-10 rounded-full shadow-[0_3px_10px_rgba(0,0,0,0.2)] border border-gray-100 flex items-center justify-center text-blue-600 hover:bg-blue-50 focus:outline-none transition-transform active:scale-95" title="Định vị lại vị trí của tôi">
@@ -190,61 +197,51 @@
             </button>
 
             <div id="map-legend" class="hidden md:block absolute bottom-6 right-6 z-[1000] bg-white/95 backdrop-blur p-3 rounded-lg shadow-lg border border-gray-200 w-max">
-                <h4 class="text-xs font-bold text-gray-700 mb-2">Chú giải</h4>
+                <h4 class="text-xs font-bold text-gray-700 mb-2" data-i18n="legend_title">Chú giải</h4>
                 <div class="space-y-2.5 text-xs whitespace-nowrap">
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block border border-gray-200"></span> Tầng 3 (Can thiệp mạch + Tiêu sợi huyết)</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block border border-gray-200"></span> Tầng 2 (Tiêu sợi huyết)</div>
-                    <div class="flex items-center gap-2" id="legend-tier-1"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block border border-gray-200"></span> Tầng 1 (Cấp cứu ban đầu)</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block border border-gray-200"></span> <span data-i18n="legend_t3">Tầng 3 (Can thiệp mạch + Tiêu sợi huyết)</span></div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block border border-gray-200"></span> <span data-i18n="legend_t2">Tầng 2 (Tiêu sợi huyết)</span></div>
+                    <div class="flex items-center gap-2" id="legend-tier-1"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block border border-gray-200"></span> <span data-i18n="legend_t1">Tầng 1 (Cấp cứu ban đầu)</span></div>
                     <hr class="my-1.5 border-gray-200">
-                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-0 inline-block"></span> Sẵn sàng nhận bệnh</div>
-                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-1 inline-block"></span> Bận / Đang xử lý</div>
-                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-2 inline-block"></span> Quá tải / Tạm ngưng</div>
+                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-0 inline-block"></span> <span data-i18n="status_ready">Sẵn sàng nhận bệnh</span></div>
+                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-1 inline-block"></span> <span data-i18n="status_busy">Bận / Đang xử lý</span></div>
+                    <div class="flex items-center gap-3 pl-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-100 border-2 border-white marker-status-2 inline-block"></span> <span data-i18n="status_overload">Quá tải / Tạm ngưng</span></div>
                 </div>
             </div>
 
             <div id="stroke-guide-banner" class="absolute bottom-2 left-2 md:bottom-6 md:left-auto md:right-[310px] lg:right-[330px] z-[1000] bg-[#e6f4e1] p-1 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-green-300 transition-all duration-300 w-auto max-w-[200px] md:max-w-[250px] hidden">
-                <img src="Picture2.png" alt="Cẩm nang nhận biết đột quỵ FAST" class="w-full h-auto object-contain rounded-lg" onerror="this.style.display='none'; document.getElementById('stroke-guide-fallback').classList.remove('hidden');">
-                <div id="stroke-guide-fallback" class="hidden bg-[#e6f4e1] p-1.5 text-center rounded-lg">
-                    <h4 class="text-red-600 font-bold text-[10px] md:text-xs mb-1 uppercase tracking-wide leading-tight">Tranh thủ từng giây<br>Cứu ngay đột quỵ</h4>
+                <div id="stroke-guide-content" class="bg-[#e6f4e1] p-1.5 text-center rounded-lg">
+                    <h4 class="text-red-600 font-bold text-[10px] md:text-xs mb-1 uppercase tracking-wide leading-tight" data-i18n="guide_title">Tranh thủ từng giây<br>Cứu ngay đột quỵ</h4>
                     <div class="flex justify-center gap-1.5 md:gap-3 mb-1.5">
-                        <div class="text-center"><div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-regular fa-face-frown-open"></i></div><span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">MÉO</span> cười</span></div>
-                        <div class="text-center"><div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-solid fa-comment-slash"></i></div><span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">NGỌNG</span> nói</span></div>
-                        <div class="text-center"><div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-solid fa-person-falling"></i></div><span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight"><span class="text-red-600 font-black">XUỘI</span> tay</span></div>
+                        <div class="text-center"><div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-regular fa-face-frown-open"></i></div><span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight" data-i18n="guide_f_title"><span class="text-red-600 font-black">MÉO</span> cười</span></div>
+                        <div class="text-center"><div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-solid fa-comment-slash"></i></div><span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight" data-i18n="guide_s_title"><span class="text-red-600 font-black">NGỌNG</span> nói</span></div>
+                        <div class="text-center"><div class="bg-blue-100 w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center mx-auto mb-0.5 text-blue-600 text-sm md:text-lg shadow-sm"><i class="fa-solid fa-person-falling"></i></div><span class="text-[9px] md:text-[11px] font-bold text-blue-900 block leading-tight" data-i18n="guide_a_title"><span class="text-red-600 font-black">XUỘI</span> tay</span></div>
                     </div>
-                    <p class="text-blue-900 font-bold text-[9px] md:text-[11px] mb-1.5 leading-tight">Mau gọi cấp cứu, đi ngay, đừng chờ!</p>
-                    <a href="tel:115" class="bg-red-600 text-white text-sm md:text-lg font-black py-1 px-4 md:py-1.5 md:px-6 rounded-full inline-flex items-center gap-1.5 md:gap-2 animate-pulse shadow-md hover:bg-red-700 transition-colors"><i class="fa-solid fa-phone-volume"></i> Gọi 115</a>
+                    <p class="text-blue-900 font-bold text-[9px] md:text-[11px] mb-1.5 leading-tight" data-i18n="guide_desc">Mau gọi cấp cứu, đi ngay, đừng chờ!</p>
+                    <a href="tel:115" class="bg-red-600 text-white text-sm md:text-lg font-black py-1 px-4 md:py-1.5 md:px-6 rounded-full inline-flex items-center gap-1.5 md:gap-2 animate-pulse shadow-md hover:bg-red-700 transition-colors"><i class="fa-solid fa-phone-volume"></i> <span data-i18n="guide_call">Gọi 115</span></a>
                 </div>
                 <button onclick="document.getElementById('stroke-guide-banner').style.display='none'" class="absolute -top-2 -right-2 md:-top-3 md:-left-3 md:right-auto bg-white rounded-full shadow-md border border-gray-200 text-gray-400 hover:text-red-600 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-[10px] md:text-xs transition-colors z-[1010]"><i class="fa-solid fa-times"></i></button>
             </div>
         </main>
     </div>
 
-    <!-- VIEW 2: DASHBOARD BỆNH VIỆN -->
+    <!-- VIEW 2: DASHBOARD QUẢN LÝ CA BỆNH BỆNH VIỆN / 115 -->
     <div id="dashboard-view" class="hidden flex-col md:flex-row flex-1 overflow-hidden z-20 relative bg-white">
-        <!-- Left: Case List -->
         <aside class="w-full md:w-[35%] lg:w-[30%] h-[50%] md:h-full bg-slate-50 border-r border-slate-200 flex flex-col min-h-0 overflow-hidden z-10">
             <div class="p-4 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10 shrink-0">
                 <h2 class="font-bold text-slate-800 text-base md:text-lg flex items-center gap-2">
-                    <i class="fa-solid fa-truck-medical text-red-600 animate-pulse"></i> Quản lý Ca Cấp Cứu
+                    <i class="fa-solid fa-truck-medical text-red-600 animate-pulse"></i> <span data-i18n="btn_manage_cases">Quản lý Ca Cấp Cứu</span>
                 </h2>
             </div>
-            
             <div class="px-4 py-2 border-b border-slate-100 bg-white flex gap-2 shrink-0">
-                <button id="dash-tab-incoming" class="text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-800 text-white shadow-sm transition-colors" onclick="switchDashTab('incoming')">Đang đến (<span id="count-incoming">0</span>)</button>
-                <button id="dash-tab-history" class="text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors" onclick="switchDashTab('history')">Lịch sử (<span id="count-history">0</span>)</button>
+                <button id="dash-tab-incoming" class="text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-800 text-white shadow-sm transition-colors" onclick="switchDashTab('incoming')"><span data-i18n="tab_incoming">Đang đến</span> (<span id="count-incoming">0</span>)</button>
+                <button id="dash-tab-history" class="text-[11px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors" onclick="switchDashTab('history')"><span data-i18n="tab_history">Lịch sử</span> (<span id="count-history">0</span>)</button>
             </div>
-            
             <div class="flex-1 overflow-y-auto p-3 pb-8 md:pb-3 space-y-3" id="dash-case-list"></div>
         </aside>
-        
-        <!-- Right: Dashboard Map -->
         <main class="w-full md:w-[65%] lg:w-[70%] h-[50%] md:h-full relative bg-slate-200 z-0">
             <div id="dashboard-map"></div>
-            
-            <button id="btn-dash-clear-route" class="absolute top-4 left-4 z-[1000] bg-white text-slate-600 px-3 py-2 rounded-md shadow-md border border-gray-100 hidden items-center gap-2 hover:bg-slate-50 text-sm font-medium transition-all" onclick="clearDashboardRoute()">
-                <i class="fa-solid fa-compress"></i> Xem toàn cảnh
-            </button>
-
+            <button id="btn-dash-clear-route" class="absolute top-4 left-4 z-[1000] bg-white text-slate-600 px-3 py-2 rounded-md shadow-md border border-gray-100 hidden items-center gap-2 hover:bg-slate-50 text-sm font-medium transition-all" onclick="clearDashboardRoute()"><i class="fa-solid fa-compress"></i> Xem toàn cảnh</button>
             <div id="dash-map-overlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center text-slate-500 transition-opacity duration-300">
                 <i class="fa-solid fa-map-location-dot text-5xl mb-4 text-slate-300"></i>
                 <p class="font-medium text-lg">Chọn một ca cấp cứu để theo dõi</p>
@@ -252,6 +249,94 @@
             </div>
         </main>
     </div>
+
+    <!-- VIEW 3: BÁO CÁO PHÂN TÍCH (DÀNH CHO ADMIN SYT) -->
+    <div id="analytics-view" class="hidden flex-col flex-1 overflow-y-auto z-20 relative bg-[#f8fafc]">
+        <div class="p-4 md:p-6 max-w-7xl mx-auto w-full">
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <h2 class="text-xl md:text-2xl font-black text-slate-800 uppercase tracking-tight"><i class="fa-solid fa-chart-pie text-purple-600 mr-2"></i><span data-i18n="report_title">Báo cáo & Đánh giá Vận hành</span></h2>
+                    <p class="text-sm text-slate-500 mt-1" data-i18n="report_subtitle">Dữ liệu phân tích Mạng lưới Đột quỵ TP.HCM (Tháng hiện tại)</p>
+                </div>
+                <div class="hidden md:flex bg-white border border-gray-200 rounded-lg p-1">
+                    <button class="px-4 py-1.5 bg-slate-100 text-slate-700 font-medium text-sm rounded">Tháng này</button>
+                    <button class="px-4 py-1.5 text-slate-500 hover:text-slate-700 font-medium text-sm rounded">Quý này</button>
+                </div>
+            </div>
+
+            <!-- Tổng quan KPIs -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500 hover:shadow-md transition">
+                    <p class="text-xs font-bold text-slate-500 uppercase">Tổng số ca cấp cứu</p>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <h3 class="text-2xl font-black text-slate-800">1,245</h3>
+                        <span class="text-xs font-bold text-green-500"><i class="fa-solid fa-arrow-trend-up"></i> 12%</span>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500 hover:shadow-md transition">
+                    <p class="text-xs font-bold text-slate-500 uppercase">Tỷ lệ cứu sống (Golden Hour)</p>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <h3 class="text-2xl font-black text-slate-800">68.5%</h3>
+                        <span class="text-xs font-bold text-green-500"><i class="fa-solid fa-arrow-trend-up"></i> 4.2%</span>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-orange-500 hover:shadow-md transition">
+                    <p class="text-xs font-bold text-slate-500 uppercase">TG di chuyển trung bình</p>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <h3 class="text-2xl font-black text-slate-800">22 <span class="text-sm font-medium text-slate-500">phút</span></h3>
+                        <span class="text-xs font-bold text-red-500"><i class="fa-solid fa-arrow-trend-up"></i> 2p</span>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-red-500 hover:shadow-md transition">
+                    <p class="text-xs font-bold text-slate-500 uppercase">Sự cố Quá tải hệ thống</p>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <h3 class="text-2xl font-black text-slate-800">45 <span class="text-sm font-medium text-slate-500">lần</span></h3>
+                        <span class="text-xs font-bold text-red-500"><i class="fa-solid fa-arrow-trend-up"></i> 8</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+                <!-- Trend Chart -->
+                <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-gray-100 lg:col-span-2">
+                    <h3 class="font-bold text-slate-700 text-sm mb-4"><i class="fa-solid fa-chart-line mr-2 text-blue-500"></i>Xu hướng Tiếp nhận Ca Đột quỵ (7 ngày qua)</h3>
+                    <div class="h-[250px] w-full"><canvas id="chart-trend"></canvas></div>
+                </div>
+                
+                <!-- Tier Distribution -->
+                <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="font-bold text-slate-700 text-sm mb-4"><i class="fa-solid fa-chart-doughnut mr-2 text-purple-500"></i>Phân bổ Bệnh nhân theo Tuyến</h3>
+                    <div class="h-[200px] w-full relative">
+                        <canvas id="chart-tier"></canvas>
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none mt-2">
+                            <div class="text-center"><span class="block text-2xl font-black text-slate-800">100%</span><span class="text-[9px] text-slate-400 uppercase font-bold">Phân tuyến</span></div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-4 text-center">Tuyến ưu tiên (Tầng 3) hiện đang gánh vác phần lớn tải trọng hệ thống.</p>
+                </div>
+            </div>
+
+            <!-- Heatmap & Overload Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <!-- Heatmap -->
+                <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-gray-100 lg:col-span-2 flex flex-col h-[400px]">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-slate-700 text-sm"><i class="fa-solid fa-map-location-dot mr-2 text-red-500"></i>Bản đồ nhiệt (Heatmap) Điểm nóng Đột quỵ</h3>
+                        <span class="text-[10px] bg-red-100 text-red-700 px-2 py-1 rounded font-bold">Mô phỏng 500 ca bệnh</span>
+                    </div>
+                    <div id="heatmap-canvas" class="flex-1 rounded-lg border border-gray-200 overflow-hidden relative z-0"></div>
+                </div>
+
+                <!-- Overload Bar Chart -->
+                <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="font-bold text-slate-700 text-sm mb-4"><i class="fa-solid fa-triangle-exclamation mr-2 text-orange-500"></i>Top 5 Bệnh viện Báo Quá tải (Giờ)</h3>
+                    <div class="h-[300px] w-full"><canvas id="chart-overload"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- MOCK TELEMEDICINE MODAL -->
     <div id="telemed-modal" class="fixed inset-0 bg-black/95 z-[6000] hidden flex-col transition-all duration-300">
@@ -304,47 +389,47 @@
     <div id="notify-modal" class="fixed inset-0 bg-black/60 z-[4000] hidden flex justify-center items-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
             <div class="p-4 md:p-5 border-b border-gray-100 flex justify-between items-center bg-orange-50 rounded-t-2xl">
-                <h2 id="notify-modal-title" class="text-base md:text-lg font-bold text-orange-800"><i class="fa-solid fa-truck-medical mr-2"></i>Thông báo ca cấp cứu đang đến</h2>
+                <h2 id="notify-modal-title" class="text-base md:text-lg font-bold text-orange-800"><i class="fa-solid fa-truck-medical mr-2"></i><span data-i18n="modal_notify_title">Thông báo ca cấp cứu đang đến</span></h2>
                 <button onclick="closeNotifyModal()" class="text-gray-400 hover:text-red-500 p-1"><i class="fa-solid fa-times text-xl"></i></button>
             </div>
             
             <div class="p-4 md:p-6 overflow-y-auto">
-                <p class="text-sm md:text-base text-gray-700 mb-5">Bạn đang gửi thông báo chuyển bệnh nhân đột quỵ tới: <strong id="notify-hospital-name" class="text-blue-700"></strong></p>
+                <p class="text-sm md:text-base text-gray-700 mb-5"><span data-i18n="notify_subtitle">Bạn đang gửi thông báo chuyển bệnh nhân đột quỵ tới: </span><strong id="notify-hospital-name" class="text-blue-700"></strong></p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-4">
-                        <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase">1. Thông tin người bệnh</h3>
+                        <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase" data-i18n="notify_section1">1. Thông tin người bệnh</h3>
                         <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Họ và tên (*)</label>
-                            <input type="text" id="notify-name" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="VD: Nguyễn Văn A">
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5" data-i18n="notify_name">Họ và tên (*)</label>
+                            <input type="text" id="notify-name" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" data-i18n-placeholder="ph_name" placeholder="VD: Nguyễn Văn A">
                         </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div><label class="block text-xs font-semibold text-gray-700 mb-1.5">Năm sinh (*)</label><input type="number" id="notify-yob" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="VD: 1960"></div>
-                            <div><label class="block text-xs font-semibold text-gray-700 mb-1.5">Số CCCD</label><input type="number" id="notify-cccd" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Tùy chọn"></div>
+                            <div><label class="block text-xs font-semibold text-gray-700 mb-1.5" data-i18n="notify_yob">Năm sinh (*)</label><input type="number" id="notify-yob" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" data-i18n-placeholder="ph_yob" placeholder="VD: 1960"></div>
+                            <div><label class="block text-xs font-semibold text-gray-700 mb-1.5" data-i18n="notify_cccd">Số CCCD</label><input type="number" id="notify-cccd" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" data-i18n-placeholder="ph_optional" placeholder="Tùy chọn"></div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div class="flex flex-col h-full"><label class="block text-xs font-semibold text-gray-700 mb-1.5">Điện thoại</label><input type="tel" id="notify-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Nhập số"></div>
-                            <div class="flex flex-col h-full"><label class="block text-[11px] md:text-xs font-semibold text-gray-700 mb-1.5 leading-tight">Điện thoại người thân<br><span class="font-normal text-gray-500 text-[10px]">(thông báo tình trạng)</span></label><input type="tel" id="notify-relative-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" placeholder="Nhập số"></div>
+                            <div class="flex flex-col h-full"><label class="block text-xs font-semibold text-gray-700 mb-1.5" data-i18n="notify_phone">Điện thoại</label><input type="tel" id="notify-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" data-i18n-placeholder="ph_phone" placeholder="Nhập số"></div>
+                            <div class="flex flex-col h-full"><label class="block text-[11px] md:text-xs font-semibold text-gray-700 mb-1.5 leading-tight"><span data-i18n="notify_rel_phone">Điện thoại người thân</span><br><span class="font-normal text-gray-500 text-[10px]" data-i18n="notify_rel_phone_sub">(thông báo tình trạng)</span></label><input type="tel" id="notify-relative-phone" class="mt-auto w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-orange-500 focus:border-orange-500 text-sm bg-gray-50" data-i18n-placeholder="ph_phone" placeholder="Nhập số"></div>
                         </div>
                     </div>
                     
                     <div class="space-y-4">
-                        <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase">2. Tình trạng hiện tại</h3>
+                        <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase" data-i18n="notify_section2">2. Tình trạng hiện tại</h3>
                         <div class="space-y-2.5">
-                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors"><input type="checkbox" class="peer sr-only" value="meo_mieng"><div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0"><i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i></div><div class="flex-1"><div class="font-bold text-sm text-gray-800"><span class="text-red-600">MÉO</span> miệng</div><div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Khuôn mặt mất cân đối, nhân trung lệch</div></div></label>
-                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors"><input type="checkbox" class="peer sr-only" value="ngong_noi"><div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0"><i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i></div><div class="flex-1"><div class="font-bold text-sm text-gray-800"><span class="text-red-600">NGỌNG</span> nói</div><div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Nói khó, líu lưỡi, không nói được câu hoàn chỉnh</div></div></label>
-                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors"><input type="checkbox" class="peer sr-only" value="xuoi_tay"><div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0"><i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i></div><div class="flex-1"><div class="font-bold text-sm text-gray-800"><span class="text-red-600">XUỘI</span> yếu liệt</div><div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">Yếu, liệt, không giơ được một bên tay hoặc chân</div></div></label>
+                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors"><input type="checkbox" class="peer sr-only" value="meo_mieng"><div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0"><i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i></div><div class="flex-1"><div class="font-bold text-sm text-gray-800" data-i18n="symp_meo_title"><span class="text-red-600">MÉO</span> miệng</div><div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5" data-i18n="notify_symp1_desc">Khuôn mặt mất cân đối, nhân trung lệch</div></div></label>
+                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors"><input type="checkbox" class="peer sr-only" value="ngong_noi"><div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0"><i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i></div><div class="flex-1"><div class="font-bold text-sm text-gray-800" data-i18n="symp_ngong_title"><span class="text-red-600">NGỌNG</span> nói</div><div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5" data-i18n="notify_symp2_desc">Nói khó, líu lưỡi, không nói được câu hoàn chỉnh</div></div></label>
+                            <label class="relative flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors"><input type="checkbox" class="peer sr-only" value="xuoi_tay"><div class="w-6 h-6 border-2 border-gray-300 rounded-md flex items-center justify-center peer-checked:bg-orange-500 peer-checked:border-orange-500 transition-all mr-3 flex-shrink-0"><i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i></div><div class="flex-1"><div class="font-bold text-sm text-gray-800" data-i18n="symp_xuoi_title"><span class="text-red-600">XUỘI</span> yếu liệt</div><div class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5" data-i18n="notify_symp3_desc">Yếu, liệt, không giơ được một bên tay hoặc chân</div></div></label>
                         </div>
                         <div class="pt-2 mt-4 border-t border-gray-100">
-                            <label class="block text-xs font-semibold text-gray-700 mb-2 mt-3">Thời điểm bắt đầu có triệu chứng (*)</label>
+                            <label class="block text-xs font-semibold text-gray-700 mb-2 mt-3" data-i18n="notify_time_label">Thời điểm bắt đầu có triệu chứng (*)</label>
                             <div id="quick-time-container" class="grid grid-cols-3 gap-2">
-                                <label class="relative cursor-pointer h-full"><input type="radio" name="quick_time" value="Dưới 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()"><div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Dưới 4.5 giờ</div></label>
-                                <label class="relative cursor-pointer h-full"><input type="radio" name="quick_time" value="Trên 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()"><div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Trên 4.5 giờ</div></label>
-                                <label class="relative cursor-pointer h-full"><input type="radio" name="quick_time" value="Không rõ" class="peer sr-only" onchange="clearSpecificTime()"><div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight">Không rõ</div></label>
+                                <label class="relative cursor-pointer h-full"><input type="radio" name="quick_time" value="Dưới 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()"><div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight"><span data-i18n="notify_time_under">Dưới 4.5 giờ</span></div></label>
+                                <label class="relative cursor-pointer h-full"><input type="radio" name="quick_time" value="Trên 4.5 giờ" class="peer sr-only" onchange="clearSpecificTime()"><div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight"><span data-i18n="notify_time_over">Trên 4.5 giờ</span></div></label>
+                                <label class="relative cursor-pointer h-full"><input type="radio" name="quick_time" value="Không rõ" class="peer sr-only" onchange="clearSpecificTime()"><div class="text-center text-[10px] md:text-xs font-bold p-2 border border-gray-200 rounded-lg peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-colors h-full flex items-center justify-center leading-tight"><span data-i18n="notify_time_unknown">Không rõ</span></div></label>
                             </div>
-                            <p id="toggle-specific-time" class="text-[11px] text-blue-600 underline cursor-pointer mt-3 text-center font-medium hover:text-blue-800 transition-colors" onclick="showSpecificTimeInput()">Hoặc nhập giờ cụ thể nếu bạn nhớ rõ</p>
+                            <p id="toggle-specific-time" class="text-xs md:text-sm text-blue-600 underline cursor-pointer mt-3 text-center font-semibold hover:text-blue-800 transition-colors" onclick="showSpecificTimeInput()" data-i18n="notify_time_specific_toggle">Hoặc nhập giờ cụ thể nếu bạn nhớ rõ</p>
                             <div id="specific-time-container" class="hidden mt-3">
-                                <div class="relative"><div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-regular fa-clock text-gray-400 text-lg"></i></div><input type="text" id="notify-time" class="w-full border border-gray-300 rounded-xl shadow-sm py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#fafafa] text-lg font-bold text-gray-800 placeholder-gray-400" placeholder="Nhập giờ (VD: 10h30, 2h chiều...)"></div>
-                                <p class="text-[11px] text-gray-500 cursor-pointer mt-2.5 text-center hover:underline font-medium" onclick="clearSpecificTime()">Trở lại chọn mốc thời gian nhanh</p>
+                                <div class="relative"><div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i class="fa-regular fa-clock text-gray-400 text-lg"></i></div><input type="text" id="notify-time" class="w-full border border-gray-300 rounded-xl shadow-sm py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-[#fafafa] text-lg font-bold text-gray-800 placeholder-gray-400" data-i18n-placeholder="ph_time" placeholder="Nhập giờ (VD: 10h30, 2h chiều...)"></div>
+                                <p class="text-xs text-gray-500 cursor-pointer mt-2.5 text-center hover:underline font-medium" onclick="clearSpecificTime()" data-i18n="notify_time_specific_back">Trở lại chọn mốc thời gian nhanh</p>
                             </div>
                         </div>
                     </div>
@@ -352,13 +437,13 @@
             </div>
             
             <div class="p-4 border-t bg-gray-50 rounded-b-2xl flex gap-3">
-                <button onclick="closeNotifyModal()" class="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-bold text-sm transition-colors">Hủy bỏ</button>
-                <button id="btn-submit-notify" onclick="submitNotification()" class="flex-[2] px-4 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2"><i class="fa-solid fa-paper-plane"></i> BÁO TRƯỚC CHO BỆNH VIỆN</button>
+                <button onclick="closeNotifyModal()" class="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-bold text-sm transition-colors" data-i18n="btn_cancel">Hủy bỏ</button>
+                <button id="btn-submit-notify" onclick="submitNotification()" class="flex-[2] px-4 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 whitespace-nowrap"><i class="fa-solid fa-paper-plane"></i> <span data-i18n="btn_send_notify">BÁO TRƯỚC CHO BỆNH VIỆN</span></button>
             </div>
         </div>
     </div>
 
-    <!-- Modals Giữ Nguyên (Update & Login) -->
+    <!-- Modals Cập nhật & Đăng nhập -->
     <div id="update-modal" class="fixed inset-0 bg-black/50 z-[3000] hidden flex justify-center items-center p-4">
         <div class="bg-white rounded-xl p-5 md:p-6 w-full max-w-[400px] shadow-2xl transform transition-all">
             <div class="flex justify-between items-center mb-4"><h2 class="text-base md:text-lg font-bold text-slate-800"><i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i>Báo cáo trạng thái</h2><button onclick="closeUpdateModal()" class="text-gray-400 hover:text-red-500 p-2 -mr-2"><i class="fa-solid fa-times text-xl"></i></button></div>
@@ -379,10 +464,243 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-
     <script>
+        // --- NGÔN NGỮ (i18n) ---
+        const i18n = {
+            vi: {
+                app_title: "HỆ THỐNG ĐIỀU PHỐI CẤP CỨU ĐỘT QUỴ",
+                app_title_mobile: "ĐIỀU PHỐI ĐỘT QUỴ",
+                app_subtitle: "Dữ liệu mạng lưới TP.HCM",
+                display_facilities: "Cơ sở hiển thị",
+                notif_history: "Lịch sử thông báo",
+                notif_clear: "Xóa tất cả",
+                notif_empty: "Chưa có thông báo nào",
+                btn_reports: "Báo cáo SYT",
+                btn_manage_cases: "Quản lý Ca Cấp Cứu",
+                btn_login: "Đăng nhập",
+                btn_logout: "Đăng xuất",
+                btn_map: "Bản đồ",
+                search_placeholder: "Tìm kiếm tên bệnh viện...",
+                filter_all: "Tất cả các tầng",
+                filter_t3: "Tầng 3 (Chuyên sâu)",
+                filter_t2: "Tầng 2 (Cơ bản)",
+                filter_t1: "Tầng 1 (Ban đầu)",
+                btn_rtpa: "Tiêu sợi huyết",
+                btn_evt: "Can thiệp mạch não",
+                rtpa_label: "Tiêu sợi huyết",
+                evt_label: "Can thiệp mạch não",
+                has_yes: "Có",
+                has_no: "Không",
+                btn_cancel_route: "Hủy dẫn đường",
+                legend_title: "Chú giải",
+                legend_t3: "Tầng 3 (Can thiệp mạch + Tiêu sợi huyết)",
+                legend_t2: "Tầng 2 (Tiêu sợi huyết)",
+                legend_t1: "Tầng 1 (Cấp cứu ban đầu)",
+                status_ready: "Sẵn sàng nhận bệnh",
+                status_busy: "Bận / Đang xử lý",
+                status_overload: "Quá tải / Tạm ngưng",
+                tab_incoming: "Đang đến",
+                tab_history: "Lịch sử",
+                empty_cases: "Hiện không có ca cấp cứu nào.",
+                btn_accept: "Tiếp nhận",
+                btn_reject: "Từ chối",
+                call_btn: "Gọi",
+                dispatch_btn: "Điều phối về đây",
+                report_issue_btn: "Báo cáo Bệnh viện",
+                notify_btn: "Báo trước cho Bệnh viện",
+                telemed_btn: "Hội chẩn từ xa",
+                his_syncing: "Đang đồng bộ HIS...",
+                his_synced: "HIS: Đã in tem",
+                symp_meo: "MÉO miệng",
+                symp_ngong: "NGỌNG nói",
+                symp_xuoi: "XUỘI tay",
+                time_submit: "Báo lúc:",
+                time_onset: "Khởi phát:",
+                contact: "LH:",
+                destination: "Đích đến:",
+                modal_notify_title: "Thông báo ca cấp cứu đang đến",
+                btn_cancel: "Hủy bỏ",
+                btn_send_notify: "BÁO TRƯỚC CHO BỆNH VIỆN",
+                report_title: "Báo cáo & Đánh giá Vận hành",
+                report_subtitle: "Dữ liệu phân tích Mạng lưới Đột quỵ TP.HCM (Tháng hiện tại)",
+                tier_3: "Tầng 3<br>(Can thiệp)",
+                tier_2: "Tầng 2<br>(TSH)",
+                tier_1: "Tầng 1<br>(Ban đầu)",
+                eta_arrived: "Đã tới nơi",
+                eta_minutes: "phút",
+                badge_critical: "Báo động đỏ",
+                badge_incoming: "Đang tới",
+                guide_title: "Tranh thủ từng giây<br>Cứu ngay đột quỵ",
+                guide_f_title: "<span class=\"text-red-600 font-black\">MÉO</span> cười",
+                guide_s_title: "<span class=\"text-red-600 font-black\">NGỌNG</span> nói",
+                guide_a_title: "<span class=\"text-red-600 font-black\">XUỘI</span> tay",
+                guide_desc: "Mau gọi cấp cứu, đi ngay, đừng chờ!",
+                guide_call: "Gọi 115",
+                notify_subtitle: "Bạn đang gửi thông báo chuyển bệnh nhân đột quỵ tới: ",
+                notify_section1: "1. Thông tin người bệnh",
+                notify_name: "Họ và tên (*)",
+                notify_yob: "Năm sinh (*)",
+                notify_cccd: "Số CCCD",
+                notify_phone: "Điện thoại",
+                notify_rel_phone: "Điện thoại người thân",
+                notify_rel_phone_sub: "(thông báo tình trạng)",
+                notify_section2: "2. Tình trạng hiện tại",
+                symp_meo_title: "<span class=\"text-red-600\">MÉO</span> miệng",
+                symp_ngong_title: "<span class=\"text-red-600\">NGỌNG</span> nói",
+                symp_xuoi_title: "<span class=\"text-red-600\">XUỘI</span> yếu liệt",
+                notify_symp1_desc: "Khuôn mặt mất cân đối, nhân trung lệch",
+                notify_symp2_desc: "Nói khó, líu lưỡi, không nói được câu hoàn chỉnh",
+                notify_symp3_desc: "Yếu, liệt, không giơ được một bên tay hoặc chân",
+                notify_time_label: "Thời điểm bắt đầu có triệu chứng (*)",
+                notify_time_under: "Dưới 4.5 giờ",
+                notify_time_over: "Trên 4.5 giờ",
+                notify_time_unknown: "Không rõ",
+                notify_time_specific_toggle: "Hoặc nhập giờ cụ thể nếu bạn nhớ rõ",
+                notify_time_specific_back: "Trở lại chọn mốc thời gian nhanh",
+                ph_name: "VD: Nguyễn Văn A",
+                ph_yob: "VD: 1960",
+                ph_optional: "Tùy chọn",
+                ph_phone: "Nhập số",
+                ph_time: "Nhập giờ (VD: 10h30, 2h chiều...)"
+            },
+            en: {
+                app_title: "STROKE EMERGENCY COORDINATION SYSTEM",
+                app_title_mobile: "STROKE COORDINATION",
+                app_subtitle: "HCMC Network Data",
+                display_facilities: "Active Facilities",
+                notif_history: "Notification History",
+                notif_clear: "Clear All",
+                notif_empty: "No notifications yet",
+                btn_reports: "Admin Reports",
+                btn_manage_cases: "Case Management",
+                btn_login: "Login",
+                btn_logout: "Logout",
+                btn_map: "Map View",
+                search_placeholder: "Search hospital name...",
+                filter_all: "All Tiers",
+                filter_t3: "Tier 3 (Comprehensive)",
+                filter_t2: "Tier 2 (Basic)",
+                filter_t1: "Tier 1 (Primary)",
+                btn_rtpa: "IV Thrombolysis (rTPA)",
+                btn_evt: "Endovascular (EVT)",
+                rtpa_label: "Thrombolysis",
+                evt_label: "Thrombectomy",
+                has_yes: "Yes",
+                has_no: "No",
+                btn_cancel_route: "Cancel Route",
+                legend_title: "Legend",
+                legend_t3: "Tier 3 (EVT + rTPA)",
+                legend_t2: "Tier 2 (rTPA)",
+                legend_t1: "Tier 1 (First Aid)",
+                status_ready: "Ready for Admission",
+                status_busy: "Busy / Processing",
+                status_overload: "Overloaded / Suspended",
+                tab_incoming: "Incoming",
+                tab_history: "History",
+                empty_cases: "No emergency cases currently.",
+                btn_accept: "Accept",
+                btn_reject: "Reject",
+                call_btn: "Call",
+                dispatch_btn: "Dispatch Here",
+                report_issue_btn: "Report Status",
+                notify_btn: "Pre-notify Hospital",
+                telemed_btn: "Telemedicine",
+                his_syncing: "Syncing to HIS...",
+                his_synced: "HIS: Wristband printed",
+                symp_meo: "FACE Drooping",
+                symp_ngong: "SPEECH Difficulty",
+                symp_xuoi: "ARM Weakness",
+                time_submit: "Reported:",
+                time_onset: "Onset time:",
+                contact: "Contact:",
+                destination: "Destination:",
+                modal_notify_title: "Incoming Emergency Notification",
+                btn_cancel: "Cancel",
+                btn_send_notify: "SEND NOTIFICATION TO HOSPITAL",
+                report_title: "Operations & Analytics Report",
+                report_subtitle: "HCMC Stroke Network Data (Current Month)",
+                tier_3: "Tier 3<br>(Comprehensive)",
+                tier_2: "Tier 2<br>(Basic)",
+                tier_1: "Tier 1<br>(Primary)",
+                eta_arrived: "Arrived",
+                eta_minutes: "mins",
+                badge_critical: "Code Red",
+                badge_incoming: "Incoming",
+                guide_title: "Time is Brain<br>Act F.A.S.T. for Stroke",
+                guide_f_title: "<span class=\"text-red-600 font-black\">F</span>ACE drooping",
+                guide_s_title: "<span class=\"text-red-600 font-black\">S</span>PEECH difficulty",
+                guide_a_title: "<span class=\"text-red-600 font-black\">A</span>RM weakness",
+                guide_desc: "T - Time to call 115! Do not wait!",
+                guide_call: "Call 115",
+                notify_subtitle: "You are sending a stroke emergency notification to: ",
+                notify_section1: "1. Patient Information",
+                notify_name: "Full Name (*)",
+                notify_yob: "Year of Birth (*)",
+                notify_cccd: "ID Card Number",
+                notify_phone: "Phone Number",
+                notify_rel_phone: "Relative's Phone",
+                notify_rel_phone_sub: "(for status updates)",
+                notify_section2: "2. Current Symptoms",
+                symp_meo_title: "<span class=\"text-red-600\">F</span>ACE drooping",
+                symp_ngong_title: "<span class=\"text-red-600\">S</span>PEECH difficulty",
+                symp_xuoi_title: "<span class=\"text-red-600\">A</span>RM weakness",
+                notify_symp1_desc: "Face drooping, uneven smile",
+                notify_symp2_desc: "Slurred speech, difficulty speaking",
+                notify_symp3_desc: "Arm or leg weakness/numbness",
+                notify_time_label: "Time of symptom onset (*)",
+                notify_time_under: "Under 4.5 hours",
+                notify_time_over: "Over 4.5 hours",
+                notify_time_unknown: "Unknown",
+                notify_time_specific_toggle: "Or enter specific time if known",
+                notify_time_specific_back: "Back to quick selection",
+                ph_name: "e.g., John Doe",
+                ph_yob: "e.g., 1960",
+                ph_optional: "Optional",
+                ph_phone: "Enter number",
+                ph_time: "e.g., 10:30 AM, 2 PM..."
+            }
+        };
+
+        let currentLang = 'vi';
+
+        // Hàm dịch text dùng trong JS template
+        function t(key) {
+            return i18n[currentLang][key] || key;
+        }
+
+        // Hàm chuyển đổi ngôn ngữ
+        window.changeLang = function(lang) {
+            currentLang = lang;
+            
+            // UI Toggle States
+            const btnVi = document.getElementById('btn-lang-vi');
+            const btnEn = document.getElementById('btn-lang-en');
+            if(lang === 'vi') {
+                btnVi.classList.replace('bg-transparent', 'bg-slate-600'); btnVi.classList.replace('opacity-50', 'opacity-100');
+                btnEn.classList.replace('bg-slate-600', 'bg-transparent'); btnEn.classList.replace('opacity-100', 'opacity-50');
+            } else {
+                btnEn.classList.replace('bg-transparent', 'bg-slate-600'); btnEn.classList.replace('opacity-50', 'opacity-100');
+                btnVi.classList.replace('bg-slate-600', 'bg-transparent'); btnVi.classList.replace('opacity-100', 'opacity-50');
+            }
+
+            // Dịch các thẻ có data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[currentLang][key]) el.innerHTML = i18n[currentLang][key];
+            });
+
+            // Dịch các placeholder
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (i18n[currentLang][key]) el.placeholder = i18n[currentLang][key];
+            });
+
+            // Re-render Dynamic Content
+            updateAuthUI(); 
+            renderData();
+            if(currentView === 'dashboard') renderDashboardCases();
+        };
+
         // --- 1. DỮ LIỆU MẪU (87 cơ sở) ---
         const hospitalsData = [
             // TẦNG 3 (17 cơ sở)
@@ -486,22 +804,56 @@
                 id: 'case_' + Date.now(), hospitalId: 1, name: "Nguyễn Văn Tùng", yob: "1965",
                 cccd: "079065123456", phone: "0901234567", relPhone: "0987654321", symptoms: ["meo_mieng", "xuoi_tay"],
                 submitTime: "10:15", onset: "Dưới 4.5 giờ", status: "incoming", patientLat: 10.7600, patientLng: 106.6600,
-                eta: 8, alerted5Min: false 
+                eta: 8, alerted5Min: false, hisStatus: 'synced', hisCode: 'P89210'
             });
         }, 500);
 
         hospitalsData.forEach(h => { h.currentStatus = Math.random() > 0.8 ? 1 : 0; h.incidentNote = ""; h.manualOverride = false; });
 
+        // --- MÔ PHỎNG TÍCH HỢP API HIS BỆNH VIỆN ---
+        window.pushToHospitalHIS = function(caseId) {
+            const caseIndex = incomingCases.findIndex(c => c.id === caseId);
+            if (caseIndex === -1) return;
+            
+            // Trạng thái 1: Đang đồng bộ
+            incomingCases[caseIndex].hisStatus = 'syncing';
+            if (currentView === 'dashboard') renderDashboardCases();
+
+            // Trạng thái 2: Trả về kết quả sau 1.5s
+            setTimeout(() => {
+                const cIdx = incomingCases.findIndex(c => c.id === caseId);
+                if (cIdx > -1) {
+                    incomingCases[cIdx].hisStatus = 'synced';
+                    // Tạo mã HIS ngẫu nhiên
+                    incomingCases[cIdx].hisCode = 'P' + Math.floor(10000 + Math.random() * 90000);
+                    if (currentView === 'dashboard') renderDashboardCases();
+                    
+                    if (loggedInUser && loggedInUser.role === 'hospital' && loggedInUser.id === incomingCases[cIdx].hospitalId) {
+                        showToast(`API HIS: Đã tiếp nhận hồ sơ tạm cho BN ${incomingCases[cIdx].name} (${incomingCases[cIdx].hisCode})`, 'info');
+                    }
+                }
+            }, 1500);
+        };
+
         let currentUserLat = null; let currentUserLng = null;
         let routingControl = null; let loggedInUser = null; 
         let currentView = 'map'; let currentDashTab = 'incoming'; let currentTrackingCaseId = null;
         let notificationsList = []; let unreadNotifCount = 0;
+        let isAnalyticsInit = false; // Cờ kiểm tra Analytics đã tạo chưa
         
+        // --- BIẾN TOÀN CỤC CHO TÀI XẾ ---
+        let driverWatchId = null; 
+        let driverRealMarker = null; 
+        let driverRoutingControl = null;
+
         const map = L.map('map', { zoomControl: false }).setView([10.8231, 106.6297], 10); 
         L.control.zoom({ position: 'topright' }).addTo(map);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        window.addEventListener('resize', () => { map.invalidateSize(); if(dashMap) dashMap.invalidateSize(); });
+        window.addEventListener('resize', () => { 
+            if(currentView === 'map') map.invalidateSize(); 
+            if(currentView === 'dashboard' && dashMap) dashMap.invalidateSize(); 
+        });
 
         let markers = []; 
         let activeFilters = { tier: 'all', rtpa: false, evt: false, search: '' };
@@ -542,7 +894,7 @@
 
         function renderNotificationList() {
             const list = document.getElementById('notif-list');
-            if (notificationsList.length === 0) { list.innerHTML = '<div class="text-center text-xs text-gray-400 py-6">Chưa có thông báo nào</div>'; return; }
+            if (notificationsList.length === 0) { list.innerHTML = '<div class="text-center text-xs text-gray-400 py-6" data-i18n="notif_empty">Chưa có thông báo nào</div>'; return; }
             list.innerHTML = notificationsList.map(n => {
                 let icon = n.type === 'error' ? 'fa-triangle-exclamation' : n.type === 'warning' ? 'fa-bell' : 'fa-circle-info';
                 let colorClass = n.type === 'error' ? 'text-red-600' : n.type === 'warning' ? 'text-yellow-600' : 'text-blue-600';
@@ -558,7 +910,7 @@
 
         function initLoginOptions() {
             const select = document.getElementById('login-account');
-            select.innerHTML = '<option value="admin" class="font-bold">Quản trị viên (Admin Hệ Thống)</option><option value="115" class="font-bold text-red-600">TRUNG TÂM CẤP CỨU 115 TPHCM</option>';
+            select.innerHTML = '<option value="admin" class="font-bold">Quản trị viên (Sở Y Tế / Admin)</option><option value="115" class="font-bold text-red-600">TRUNG TÂM CẤP CỨU 115 TPHCM</option><option value="driver" class="font-bold text-blue-600">TÀI XẾ XE 115 (Theo dõi GPS thật)</option>';
             hospitalsData.forEach(h => { select.innerHTML += `<option value="${h.id}">Bệnh viện: ${h.name}</option>`; });
         }
         initLoginOptions();
@@ -571,7 +923,8 @@
             if (pass !== '115') { alert("Mật khẩu không đúng! (Gợi ý: Mật khẩu thử nghiệm là '115')"); return; }
 
             if (accType === '115') { loggedInUser = { role: '115', name: 'Trung Tâm Cấp Cứu 115', id: null }; } 
-            else if (accType === 'admin') { loggedInUser = { role: 'admin', name: 'Admin Điều phối', id: null }; } 
+            else if (accType === 'admin') { loggedInUser = { role: 'admin', name: 'Sở Y tế TP.HCM', id: null }; } 
+            else if (accType === 'driver') { loggedInUser = { role: 'driver', name: 'Tài xế 115 (Xe 01)', id: null }; }
             else { const h = hospitalsData.find(x => x.id === parseInt(accType)); loggedInUser = { role: 'hospital', id: h.id, name: h.name, lat: h.lat, lng: h.lng }; }
 
             closeLoginModal(); updateAuthUI(); renderData();
@@ -585,68 +938,308 @@
             showToast(`Đăng nhập thành công: ${loggedInUser.name}`, 'info');
         };
 
-        window.handleLogout = function() { loggedInUser = null; updateAuthUI(); renderData(); showToast('Đã đăng xuất khỏi hệ thống.', 'info'); };
+        window.handleLogout = function() { 
+            if (loggedInUser && loggedInUser.role === 'driver') stopDriverTracking();
+            loggedInUser = null; updateAuthUI(); switchView('map'); renderData(); showToast('Đã đăng xuất khỏi hệ thống.', 'info'); 
+        };
 
-        function toggleMainView() {
-            const mainView = document.getElementById('main-view'); const dashView = document.getElementById('dashboard-view');
-            const btnToggle = document.getElementById('btn-toggle-view'); const headerTitleMain = document.getElementById('header-title-main');
-            const headerTitleMobile = document.getElementById('header-title-mobile'); const headerStats = document.getElementById('header-stats');
+        // --- HỆ THỐNG ĐIỀU HƯỚNG VIEW ---
+        window.switchView = function(viewName) {
+            currentView = viewName;
+            const mainView = document.getElementById('main-view');
+            const dashView = document.getElementById('dashboard-view');
+            const analyticsView = document.getElementById('analytics-view');
+            const btnToggleView = document.getElementById('btn-toggle-view');
+            const btnAnalytics = document.getElementById('btn-analytics');
+            const headerTitleMain = document.getElementById('header-title-main');
+            const headerTitleMobile = document.getElementById('header-title-mobile');
+            const headerStats = document.getElementById('header-stats');
 
-            if (currentView === 'map') {
-                currentView = 'dashboard';
-                mainView.classList.add('hidden'); mainView.classList.remove('flex');
-                dashView.classList.remove('hidden'); dashView.classList.add('flex');
-                headerTitleMain.innerText = loggedInUser.role === '115' ? "ĐIỀU PHỐI CẤP CỨU 115" : "DASHBOARD QUẢN LÝ CA CẤP CỨU";
-                headerTitleMobile.innerText = "DASHBOARD"; headerStats.classList.add('hidden');
-                btnToggle.innerHTML = `<i class="fa-solid fa-map md:mr-1"></i><span class="hidden md:inline">Bản đồ Mạng lưới</span>`;
-                btnToggle.classList.replace('bg-orange-500', 'bg-blue-500'); btnToggle.classList.replace('hover:bg-orange-600', 'hover:bg-blue-600');
-                initDashboardMap(); renderDashboardCases();
-            } else {
-                currentView = 'map';
-                dashView.classList.add('hidden'); dashView.classList.remove('flex');
+            // Ẩn tất cả
+            mainView.classList.add('hidden'); mainView.classList.remove('flex');
+            dashView.classList.add('hidden'); dashView.classList.remove('flex');
+            analyticsView.classList.add('hidden'); analyticsView.classList.remove('flex');
+
+            if (viewName === 'map') {
                 mainView.classList.remove('hidden'); mainView.classList.add('flex');
-                headerTitleMain.innerText = "HỆ THỐNG ĐIỀU PHỐI CẤP CỨU ĐỘT QUỴ";
-                headerTitleMobile.innerText = "ĐIỀU PHỐI ĐỘT QUỴ"; headerStats.classList.remove('hidden');
-                btnToggle.innerHTML = `<i class="fa-solid fa-table-columns md:mr-1"></i><span class="hidden md:inline">Quản lý Ca Cấp Cứu</span>`;
-                btnToggle.classList.replace('bg-blue-500', 'bg-orange-500'); btnToggle.classList.replace('hover:bg-blue-600', 'hover:bg-orange-600');
-                setTimeout(() => { map.invalidateSize(); }, 100);
+                headerTitleMain.innerText = t('app_title'); headerTitleMobile.innerText = t('app_title_mobile'); 
+                headerStats.classList.remove('hidden');
+                
+                btnToggleView.innerHTML = `<i class="fa-solid fa-table-columns md:mr-1"></i><span class="hidden md:inline">${t('btn_manage_cases')}</span>`;
+                btnToggleView.classList.replace('bg-blue-500', 'bg-orange-500'); btnToggleView.classList.replace('hover:bg-blue-600', 'hover:bg-orange-600');
+                
+                if (loggedInUser && loggedInUser.role === 'admin') {
+                    btnAnalytics.classList.remove('hidden');
+                    btnAnalytics.innerHTML = `<i class="fa-solid fa-chart-pie md:mr-1"></i><span class="hidden md:inline">${t('btn_reports')}</span>`;
+                }
+                setTimeout(() => map.invalidateSize(), 100);
+
+            } else if (viewName === 'dashboard') {
+                dashView.classList.remove('hidden'); dashView.classList.add('flex');
+                headerTitleMain.innerText = loggedInUser.role === '115' ? "ĐIỀU PHỐI CẤP CỨU 115" : t('app_title'); headerTitleMobile.innerText = "DASHBOARD"; 
+                headerStats.classList.add('hidden');
+                
+                btnToggleView.innerHTML = `<i class="fa-solid fa-map md:mr-1"></i><span class="hidden md:inline">${t('btn_map')}</span>`;
+                btnToggleView.classList.replace('bg-orange-500', 'bg-blue-500'); btnToggleView.classList.replace('hover:bg-orange-600', 'hover:bg-blue-600');
+                
+                if (loggedInUser && loggedInUser.role === 'admin') {
+                    btnAnalytics.classList.remove('hidden');
+                    btnAnalytics.innerHTML = `<i class="fa-solid fa-chart-pie md:mr-1"></i><span class="hidden md:inline">${t('btn_reports')}</span>`;
+                }
+                initDashboardMap(); renderDashboardCases();
+
+            } else if (viewName === 'analytics') {
+                analyticsView.classList.remove('hidden'); analyticsView.classList.add('flex');
+                headerTitleMain.innerText = t('app_title'); headerTitleMobile.innerText = "PHÂN TÍCH"; 
+                headerStats.classList.add('hidden');
+                
+                btnToggleView.classList.add('hidden'); // Ẩn nút quản lý ca khi ở Analytics để nhường chỗ
+                btnAnalytics.innerHTML = `<i class="fa-solid fa-map md:mr-1"></i><span class="hidden md:inline">${t('btn_map')}</span>`;
+                initAnalytics();
             }
-        }
+        };
+
+        window.toggleDashboard = function() {
+            if (currentView === 'dashboard') switchView('map');
+            else switchView('dashboard');
+        };
+
+        window.toggleAnalytics = function() {
+            if (currentView === 'analytics') switchView('map');
+            else switchView('analytics');
+        };
 
         function updateAuthUI() {
             const btnLogin = document.getElementById('btn-login'); const userInfo = document.getElementById('user-info');
-            const btnToggleView = document.getElementById('btn-toggle-view'); const tierFilter = document.getElementById('filter-tier');
-            const strokeGuide = document.getElementById('stroke-guide-banner'); const legendTier1 = document.getElementById('legend-tier-1');
-            const advancedFilters = document.getElementById('advanced-filters');
+            const btnToggleView = document.getElementById('btn-toggle-view'); const btnAnalytics = document.getElementById('btn-analytics');
+            const tierFilter = document.getElementById('filter-tier'); const strokeGuide = document.getElementById('stroke-guide-banner'); 
+            const legendTier1 = document.getElementById('legend-tier-1'); const advancedFilters = document.getElementById('advanced-filters');
 
             if (loggedInUser) {
-                btnLogin.innerHTML = `<i class="fa-solid fa-right-from-bracket md:mr-1"></i><span class="hidden md:inline">Đăng xuất</span>`;
+                btnLogin.innerHTML = `<i class="fa-solid fa-right-from-bracket md:mr-1"></i><span class="hidden md:inline">${t('btn_logout')}</span>`;
                 btnLogin.onclick = handleLogout; btnLogin.classList.replace('bg-blue-600', 'bg-slate-700'); btnLogin.classList.replace('hover:bg-blue-700', 'hover:bg-slate-800');
                 const roleColor = loggedInUser.role === '115' ? 'text-red-400' : 'text-green-400';
                 userInfo.innerHTML = `<div class="text-[10px] text-slate-400">Xin chào,</div><div class="font-bold ${roleColor} text-xs md:text-sm truncate max-w-[100px] md:max-w-[200px]">${loggedInUser.name}</div>`;
-                userInfo.classList.remove('hidden'); btnToggleView.classList.remove('hidden');
+                userInfo.classList.remove('hidden'); 
                 
-                advancedFilters.classList.remove('hidden');
-                advancedFilters.classList.add('block');
+                if (loggedInUser.role === 'admin') {
+                    btnAnalytics.classList.remove('hidden');
+                } else {
+                    btnAnalytics.classList.add('hidden');
+                }
+                
+                if (loggedInUser.role === 'driver') {
+                    btnToggleView.classList.add('hidden'); 
+                    startDriverTracking();
+                } else {
+                    if (currentView !== 'analytics') btnToggleView.classList.remove('hidden');
+                }
 
+                advancedFilters.classList.remove('hidden'); advancedFilters.classList.add('block');
                 Array.from(tierFilter.options).forEach(opt => { if (opt.value === '1') opt.style.display = 'block'; });
                 if (strokeGuide) { strokeGuide.style.display = 'none'; strokeGuide.classList.add('hidden'); }
                 if (legendTier1) legendTier1.style.display = 'flex';
             } else {
-                btnLogin.innerHTML = `<i class="fa-solid fa-user-lock md:mr-1"></i><span class="hidden md:inline">Đăng nhập</span>`;
+                btnLogin.innerHTML = `<i class="fa-solid fa-user-lock md:mr-1"></i><span class="hidden md:inline">${t('btn_login')}</span>`;
                 btnLogin.onclick = openLoginModal; btnLogin.classList.replace('bg-slate-700', 'bg-blue-600'); btnLogin.classList.replace('hover:bg-slate-800', 'hover:bg-blue-700');
-                userInfo.classList.add('hidden'); btnToggleView.classList.add('hidden');
+                userInfo.classList.add('hidden'); btnToggleView.classList.add('hidden'); btnAnalytics.classList.add('hidden');
                 
-                advancedFilters.classList.add('hidden', 'md:block');
-                advancedFilters.classList.remove('block');
+                advancedFilters.classList.add('hidden', 'md:block'); advancedFilters.classList.remove('block');
 
-                if (currentView === 'dashboard') toggleMainView();
+                if (currentView === 'dashboard' || currentView === 'analytics') switchView('map');
+                
                 Array.from(tierFilter.options).forEach(opt => { if (opt.value === '1') opt.style.display = 'none'; });
                 if (activeFilters.tier === '1') { activeFilters.tier = 'all'; tierFilter.value = 'all'; }
                 if (strokeGuide) { strokeGuide.style.display = 'block'; strokeGuide.classList.remove('hidden'); }
                 if (legendTier1) legendTier1.style.display = 'none';
             }
             clearRoute(); clearDashboardRoute(); setTimeout(() => { map.invalidateSize(); renderData(); }, 100);
+        }
+
+        // ==========================================
+        // KHỞI TẠO TÍNH NĂNG THEO DÕI TÀI XẾ (GPS THẬT)
+        // ==========================================
+        function startDriverTracking() {
+            document.getElementById('driver-banner').classList.remove('hidden');
+            
+            if ("geolocation" in navigator) {
+                // Tự động tạo 1 ca bệnh gắn liền với xe cứu thương này nếu chưa có
+                let myCase = incomingCases.find(c => c.isRealTracking);
+                
+                // Mở kết nối GPS liên tục, bất kỳ khi nào tài xế nhích chân, hàm này sẽ chạy
+                driverWatchId = navigator.geolocation.watchPosition((position) => {
+                    currentUserLat = position.coords.latitude;
+                    currentUserLng = position.coords.longitude;
+                    
+                    if (!myCase) {
+                        // Tự động gán đích đến là bệnh viện Tầng 3 đầu tiên (VD: Nhân dân 115)
+                        const destHosp = hospitalsData.find(h => h.tier === 3);
+                        myCase = {
+                            id: 'driver_case_' + Date.now(),
+                            hospitalId: destHosp.id,
+                            name: "Bệnh nhân (Xe 01)",
+                            yob: "1970", cccd: "", phone: "", relPhone: "",
+                            symptoms: ["meo_mieng", "xuoi_tay"], time: "Vừa nhận ca", submitTime: new Date().toLocaleTimeString('vi-VN'),
+                            onset: "Dưới 4.5 giờ", status: "incoming",
+                            patientLat: currentUserLat, patientLng: currentUserLng,
+                            eta: 15, alerted5Min: false, 
+                            isRealTracking: true // <-- Cờ đặc biệt: Vô hiệu hóa nội suy giả lập
+                        };
+                        incomingCases.unshift(myCase);
+                        showToast(`Nhận ca thành công! Hệ thống đang truyền GPS thật của bạn về ${destHosp.name}`, 'info');
+                    } else {
+                        // Liên tục đè tọa độ GPS thật vào biến lưu trữ ca bệnh để bệnh viện thấy
+                        myCase.patientLat = currentUserLat;
+                        myCase.patientLng = currentUserLng;
+                        
+                        // Tính ETA thật dựa trên khoảng cách chim bay và vận tốc giả định xe cứu thương (40km/h)
+                        const destHosp = hospitalsData.find(h => h.id === myCase.hospitalId);
+                        const dist = calculateDistance(currentUserLat, currentUserLng, destHosp.lat, destHosp.lng);
+                        myCase.eta = Math.max(1, Math.round((dist / 40) * 60)); 
+                    }
+                    
+                    const destHosp = hospitalsData.find(h => h.id === myCase.hospitalId);
+                    document.getElementById('driver-dest-name').innerText = destHosp.name;
+                    document.getElementById('driver-eta').innerText = myCase.eta;
+                    
+                    // Cập nhật Marker và Lộ trình trực tiếp trên bản đồ của Tài xế
+                    if (!driverRealMarker) {
+                        const icon = L.divIcon({ className: 'custom-div-icon', html: `<div class="w-12 h-12 rounded-full bg-blue-600 border-4 border-white text-white flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.8)] patient-marker-pulse"><i class="fa-solid fa-ambulance text-2xl"></i></div>`, iconSize: [48, 48], iconAnchor: [24, 24] });
+                        driverRealMarker = L.marker([myCase.patientLat, myCase.patientLng], {icon: icon, zIndexOffset: 3000}).addTo(map);
+                        map.flyTo([myCase.patientLat, myCase.patientLng], 16, { animate: true });
+                    } else {
+                        driverRealMarker.setLatLng([myCase.patientLat, myCase.patientLng]);
+                        map.panTo([myCase.patientLat, myCase.patientLng]); // Camera bám theo xe
+                    }
+                    
+                    // Vẽ và rút ngắn lộ trình dần theo vết bánh xe
+                    if (!driverRoutingControl) {
+                        driverRoutingControl = L.Routing.control({
+                            waypoints: [ L.latLng(myCase.patientLat, myCase.patientLng), L.latLng(destHosp.lat, destHosp.lng) ],
+                            routeWhileDragging: false, addWaypoints: false, show: false,
+                            lineOptions: { styles: [{color: '#2563eb', opacity: 0.9, weight: 8}] }, createMarker: () => null
+                        }).addTo(map);
+                    } else {
+                        driverRoutingControl.spliceWaypoints(0, 1, L.latLng(myCase.patientLat, myCase.patientLng));
+                    }
+                    
+                }, (error) => {
+                    showToast("Lỗi truy cập GPS: " + error.message, "error");
+                }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
+            } else {
+                showToast("Điện thoại của bạn không hỗ trợ GPS.", "error");
+            }
+        }
+
+        function stopDriverTracking() {
+            if (driverWatchId) navigator.geolocation.clearWatch(driverWatchId);
+            driverWatchId = null;
+            if (driverRealMarker) { map.removeLayer(driverRealMarker); driverRealMarker = null; }
+            if (driverRoutingControl) { map.removeControl(driverRoutingControl); driverRoutingControl = null; }
+            document.getElementById('driver-banner').classList.add('hidden');
+        }
+
+        window.endDriverCase = function() {
+            const caseIdx = incomingCases.findIndex(c => c.isRealTracking);
+            if (caseIdx > -1) {
+                incomingCases[caseIdx].status = 'accepted';
+                incomingCases[caseIdx].isRealTracking = false;
+                showToast("Đã bàn giao bệnh nhân thành công. Đóng luồng GPS.", "info");
+            }
+            stopDriverTracking();
+        }
+
+        // ==========================================
+        // KHỞI TẠO TÍNH NĂNG PHÂN TÍCH (ANALYTICS)
+        // ==========================================
+        function initAnalytics() {
+            if (isAnalyticsInit) return; // Chỉ khởi tạo biểu đồ 1 lần
+            
+            // 1. Biểu đồ Trend (Line Chart)
+            const ctxTrend = document.getElementById('chart-trend').getContext('2d');
+            new Chart(ctxTrend, {
+                type: 'line',
+                data: {
+                    labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+                    datasets: [{
+                        label: 'Số ca tiếp nhận',
+                        data: [45, 52, 38, 65, 59, 82, 70],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#3b82f6',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [5, 5] } }, x: { grid: { display: false } } } }
+            });
+
+            // 2. Biểu đồ Phân bổ Tầng (Doughnut Chart)
+            const ctxTier = document.getElementById('chart-tier').getContext('2d');
+            new Chart(ctxTier, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Tầng 3 (Can thiệp)', 'Tầng 2 (TSH)', 'Tầng 1 (Ban đầu)'],
+                    datasets: [{
+                        data: [60, 28, 12],
+                        backgroundColor: ['#ef4444', '#f97316', '#3b82f6'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15, font: { size: 11 } } } } }
+            });
+
+            // 3. Biểu đồ Quá tải (Bar Chart)
+            const ctxOverload = document.getElementById('chart-overload').getContext('2d');
+            new Chart(ctxOverload, {
+                type: 'bar',
+                data: {
+                    labels: ['BV 115', 'Chợ Rẫy', 'ĐH Y Dược', 'Thống Nhất', 'Gia Định'],
+                    datasets: [{
+                        label: 'Số giờ báo quá tải',
+                        data: [14, 11, 8, 5, 3],
+                        backgroundColor: '#f87171',
+                        borderRadius: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } }
+            });
+
+            // 4. Khởi tạo Bản đồ nhiệt (Heatmap)
+            const heatMap = L.map('heatmap-canvas', { zoomControl: false, attributionControl: false }).setView([10.8, 106.65], 11);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(heatMap);
+            
+            // Tạo 500 điểm dữ liệu giả lập tập trung quanh các khu vực đông dân
+            const heatData = [];
+            const centers = [[10.776, 106.66], [10.85, 106.75], [10.75, 106.62], [10.8, 106.68]];
+            for (let i = 0; i < 500; i++) {
+                const c = centers[Math.floor(Math.random() * centers.length)];
+                const lat = c[0] + (Math.random() - 0.5) * 0.15;
+                const lng = c[1] + (Math.random() - 0.5) * 0.15;
+                const intensity = Math.random();
+                heatData.push([lat, lng, intensity]);
+            }
+            
+            L.heatLayer(heatData, {
+                radius: 20,
+                blur: 15,
+                maxZoom: 13,
+                gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}
+            }).addTo(heatMap);
+
+            // Thêm marker Bệnh viện Tầng 3 lên Heatmap để đối chiếu
+            hospitalsData.filter(h => h.tier === 3).forEach(h => {
+                L.circleMarker([h.lat, h.lng], {
+                    color: '#fff', fillColor: '#000', fillOpacity: 0.8, radius: 4, weight: 1
+                }).addTo(heatMap).bindPopup(h.name);
+            });
+
+            isAnalyticsInit = true;
         }
 
         // ==========================================
@@ -688,7 +1281,7 @@
             const displayCases = currentDashTab === 'incoming' ? incomingList : historyList;
 
             if(displayCases.length === 0) {
-                listContainer.innerHTML = `<div class="flex flex-col items-center justify-center h-40 text-slate-400"><i class="fa-solid ${currentDashTab === 'incoming' ? 'fa-mug-hot' : 'fa-folder-open'} text-3xl mb-2 text-slate-300"></i><p class="text-sm font-medium">Hiện không có ca cấp cứu nào.</p></div>`;
+                listContainer.innerHTML = `<div class="flex flex-col items-center justify-center h-40 text-slate-400"><i class="fa-solid ${currentDashTab === 'incoming' ? 'fa-mug-hot' : 'fa-folder-open'} text-3xl mb-2 text-slate-300"></i><p class="text-sm font-medium">${t('empty_cases')}</p></div>`;
                 return;
             }
 
@@ -699,17 +1292,17 @@
                 let statusColor, statusText;
                 if (isIncoming) {
                     statusColor = isCriticalETA ? 'bg-red-600 text-white animate-pulse' : 'bg-orange-100 text-orange-700';
-                    statusText = isCriticalETA ? '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Báo động đỏ' : '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Đang tới';
+                    statusText = isCriticalETA ? `<i class="fa-solid fa-triangle-exclamation mr-1"></i> ${t('badge_critical')}` : `<i class="fa-solid fa-spinner fa-spin mr-1"></i> ${t('badge_incoming')}`;
                 } else if (c.status === 'accepted') {
-                    statusColor = 'bg-green-100 text-green-700'; statusText = '<i class="fa-solid fa-check mr-1"></i> Đã tiếp nhận';
+                    statusColor = 'bg-green-100 text-green-700'; statusText = `<i class="fa-solid fa-check mr-1"></i> ${t('btn_accept')}`;
                 } else {
-                    statusColor = 'bg-slate-200 text-slate-600'; statusText = '<i class="fa-solid fa-ban mr-1"></i> Đã từ chối';
+                    statusColor = 'bg-slate-200 text-slate-600'; statusText = `<i class="fa-solid fa-ban mr-1"></i> ${t('btn_reject')}`;
                 }
                 
                 let sympTags = c.symptoms.map(s => {
-                    if(s==='meo_mieng') return `<span class="text-red-600 font-bold border border-red-200 bg-white px-2 py-0.5 rounded text-[10px]">MÉO miệng</span>`;
-                    if(s==='ngong_noi') return `<span class="text-red-600 font-bold border border-red-200 bg-white px-2 py-0.5 rounded text-[10px]">NGỌNG nói</span>`;
-                    if(s==='xuoi_tay') return `<span class="text-red-600 font-bold border border-red-200 bg-white px-2 py-0.5 rounded text-[10px]">XUỘI tay</span>`;
+                    if(s==='meo_mieng') return `<span class="text-red-600 font-bold border border-red-200 bg-white px-2 py-0.5 rounded text-[10px]">${t('symp_meo')}</span>`;
+                    if(s==='ngong_noi') return `<span class="text-red-600 font-bold border border-red-200 bg-white px-2 py-0.5 rounded text-[10px]">${t('symp_ngong')}</span>`;
+                    if(s==='xuoi_tay') return `<span class="text-red-600 font-bold border border-red-200 bg-white px-2 py-0.5 rounded text-[10px]">${t('symp_xuoi')}</span>`;
                     return '';
                 }).join('');
 
@@ -725,10 +1318,18 @@
                 }
 
                 let destinationHtml = (loggedInUser && (loggedInUser.role === '115' || loggedInUser.role === 'admin')) 
-                    ? `<div class="mb-1 text-[11px] text-gray-600"><i class="fa-solid fa-hospital text-gray-400 mr-1"></i>Đích đến: <b class="text-blue-700">${hospitalsData.find(h=>h.id===c.hospitalId)?.name}</b></div>` : '';
+                    ? `<div class="mb-1 text-[11px] text-gray-600"><i class="fa-solid fa-hospital text-gray-400 mr-1"></i>${t('destination')} <b class="text-blue-700">${hospitalsData.find(h=>h.id===c.hospitalId)?.name}</b></div>` : '';
 
-                const etaDisplay = c.eta > 0 ? `${c.eta} phút` : 'Đã tới nơi';
+                const etaDisplay = c.eta > 0 ? `${c.eta} ${t('eta_minutes')}` : t('eta_arrived');
                 const etaColorClass = isCriticalETA ? 'text-red-600 font-bold animate-pulse text-sm' : 'text-blue-600';
+
+                // --- TÍCH HỢP HIS API SIMULATION UI ---
+                let hisHtml = '';
+                if (c.hisStatus === 'syncing') {
+                    hisHtml = `<div class="mt-2 text-[10px] md:text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1.5 rounded border border-blue-200 w-fit flex items-center his-sync-pulse"><i class="fa-solid fa-satellite-dish mr-1.5 text-blue-500"></i> ${t('his_syncing')}</div>`;
+                } else if (c.hisStatus === 'synced') {
+                    hisHtml = `<div class="mt-2 text-[10px] md:text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1.5 rounded border border-emerald-200 w-fit flex items-center"><i class="fa-solid fa-barcode mr-1.5 text-emerald-600"></i> ${t('his_synced')} (${c.hisCode})</div>`;
+                }
 
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
@@ -737,21 +1338,22 @@
                     </div>
                     ${destinationHtml}
                     <div class="flex flex-wrap gap-1.5 mb-3">${sympTags}</div>
-                    <div class="bg-slate-50/80 border border-slate-100 rounded-lg p-2.5 mb-3 flex flex-col gap-2 text-[11px] text-slate-600">
+                    <div class="bg-slate-50/80 border border-slate-100 rounded-lg p-2.5 mb-2 flex flex-col gap-2 text-[11px] text-slate-600">
                         <div class="grid grid-cols-2 gap-2">
-                            <div><i class="fa-regular fa-clock text-slate-400 mr-1"></i>Báo lúc: <b class="text-slate-800">${c.submitTime || c.time}</b></div>
+                            <div><i class="fa-regular fa-clock text-slate-400 mr-1"></i>${t('time_submit')} <b class="text-slate-800">${c.submitTime || c.time}</b></div>
                             <div><i class="fa-solid fa-location-arrow text-slate-400 mr-1"></i>ETA: ${isIncoming ? `<b class="${etaColorClass}">${etaDisplay}</b>` : '<b>-</b>'}</div>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
-                            <div><i class="fa-solid fa-truck-medical text-slate-400 mr-1"></i>Khởi phát: <b class="text-red-600">${c.onset || 'Không rõ'}</b></div>
-                            <div><i class="fa-solid fa-phone text-slate-400 mr-1"></i>LH: ${c.phone ? `<a href="tel:${c.phone}" class="font-bold text-green-600 hover:underline" onclick="event.stopPropagation()">${c.phone}</a>` : '<span class="text-slate-400 italic">Không có</span>'}</div>
+                            <div><i class="fa-solid fa-truck-medical text-slate-400 mr-1"></i>${t('time_onset')} <b class="text-red-600">${c.onset || 'Không rõ'}</b></div>
+                            <div><i class="fa-solid fa-phone text-slate-400 mr-1"></i>${t('contact')} ${c.phone ? `<a href="tel:${c.phone}" class="font-bold text-green-600 hover:underline" onclick="event.stopPropagation()">${c.phone}</a>` : '<span class="text-slate-400 italic">Không có</span>'}</div>
                         </div>
                         ${extraInfoHtml}
                     </div>
+                    ${hisHtml}
                     ${isIncoming && loggedInUser && loggedInUser.role === 'hospital' ? `
-                    <div class="flex gap-2">
-                        <button class="flex-[2] bg-green-500 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-600 transition shadow-sm" onclick="event.stopPropagation(); updateCaseStatus('${c.id}', 'accepted')"><i class="fa-solid fa-check mr-1"></i> Tiếp nhận</button>
-                        <button class="flex-1 bg-slate-100 text-slate-600 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 transition" onclick="event.stopPropagation(); updateCaseStatus('${c.id}', 'rejected')">Từ chối</button>
+                    <div class="flex gap-2 mt-3">
+                        <button class="flex-[2] bg-green-500 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-600 transition shadow-sm" onclick="event.stopPropagation(); updateCaseStatus('${c.id}', 'accepted')"><i class="fa-solid fa-check mr-1"></i> ${t('btn_accept')}</button>
+                        <button class="flex-1 bg-slate-100 text-slate-600 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 transition" onclick="event.stopPropagation(); updateCaseStatus('${c.id}', 'rejected')">${t('btn_reject')}</button>
                     </div>
                     ` : ''}
                 `;
@@ -791,11 +1393,11 @@
             if (dashHospitalMarker) dashMap.removeLayer(dashHospitalMarker);
 
             // Vẽ Hospital Marker
-            const hIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="custom-marker marker-tier-3 marker-status-0" style="width: 32px; height: 32px;"><i class="fa-solid fa-building-circle-check"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16] });
+            const hIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="custom-marker marker-tier-3 marker-status-0" style="width: 32px; height: 32px;"><i class="fa-solid fa-building-circle-check"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -18] });
             dashHospitalMarker = L.marker([hospital.lat, hospital.lng], {icon: hIcon}).addTo(dashMap).bindPopup(`<b>${hospital.name}</b>`);
 
             // Vẽ Patient Marker
-            const pIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white text-white flex items-center justify-center patient-marker-pulse shadow-xl"><i class="fa-solid fa-truck-medical text-xs"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16] });
+            const pIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white text-white flex items-center justify-center patient-marker-pulse shadow-xl"><i class="fa-solid fa-truck-medical text-xs"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -18] });
             dashPatientMarker = L.marker([caseData.patientLat, caseData.patientLng], {icon: pIcon, zIndexOffset: 1000}).addTo(dashMap).bindPopup(`<b>Ca cấp cứu: ${caseData.name}</b><br>${caseData.status==='incoming'?'Đang di chuyển...':'Đã lưu trữ'}`);
             
             setTimeout(() => dashPatientMarker.openPopup(), 1000);
@@ -894,7 +1496,7 @@
                 html: `<div class="custom-marker ${tierClass} ${statusClass} ${highlightClass}" style="width: 26px; height: 26px;">${hospital.tier}</div>`,
                 iconSize: [26, 26],
                 iconAnchor: [13, 13],
-                popupAnchor: [0, -18] // Space for the tail
+                popupAnchor: [0, -14]
             });
         }
 
@@ -943,28 +1545,27 @@
                 
                 const marker = L.marker([hospital.lat, hospital.lng], markerOptions).addTo(map);
                 
-                let statusBoxHtml = hospital.currentStatus === 0 ? `<div class="flex items-center gap-1.5 px-2 md:px-3 py-1.5 md:py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 font-bold text-[11px] md:text-sm mb-2 md:mb-3"><i class="fa-solid fa-circle-check text-green-600"></i> Sẵn sàng nhận bệnh</div>` : 
-                                    hospital.currentStatus === 1 ? `<div class="flex items-center gap-1.5 px-2 md:px-3 py-1.5 md:py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700 font-bold text-[11px] md:text-sm mb-2 md:mb-3"><i class="fa-solid fa-spinner fa-spin text-yellow-600"></i> Đang xử lý ca cấp cứu</div>` : 
-                                    `<div class="flex items-center gap-1.5 px-2 md:px-3 py-1.5 md:py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 font-bold text-[11px] md:text-sm mb-2 md:mb-3"><i class="fa-solid fa-triangle-exclamation text-red-600"></i> Quá tải / Tạm ngưng</div>`;
+                let statusBoxHtml = hospital.currentStatus === 0 ? `<div class="flex items-center gap-1.5 px-2 md:px-3 py-1.5 md:py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 font-bold text-[11px] md:text-sm mb-2 md:mb-3"><i class="fa-solid fa-circle-check text-green-600"></i> ${t('status_ready')}</div>` : 
+                                    hospital.currentStatus === 1 ? `<div class="flex items-center gap-1.5 px-2 md:px-3 py-1.5 md:py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700 font-bold text-[11px] md:text-sm mb-2 md:mb-3"><i class="fa-solid fa-spinner fa-spin text-yellow-600"></i> ${t('status_busy')}</div>` : 
+                                    `<div class="flex items-center gap-1.5 px-2 md:px-3 py-1.5 md:py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 font-bold text-[11px] md:text-sm mb-2 md:mb-3"><i class="fa-solid fa-triangle-exclamation text-red-600"></i> ${t('status_overload')}</div>`;
 
                 const rtpaClass = hospital.rtpa ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200';
                 const evtClass = hospital.evt ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200';
                 
-                const capabilitiesText = `<div class="grid grid-cols-12 gap-1 md:gap-2 mb-2 md:mb-3"><span class="col-span-5 flex items-center justify-center text-center px-1 py-1 md:py-1.5 text-[9px] md:text-xs rounded border whitespace-nowrap ${rtpaClass}">Tiêu sợi huyết: ${hospital.rtpa ? 'Có' : 'Không'}</span><span class="col-span-7 flex items-center justify-center text-center px-1 py-1 md:py-1.5 text-[9px] md:text-xs rounded border whitespace-nowrap ${evtClass}">Can thiệp mạch não: ${hospital.evt ? 'Có' : 'Không'}</span></div>`;
+                const capabilitiesText = `<div class="grid grid-cols-12 gap-1 md:gap-2 mb-2 md:mb-3"><span class="col-span-5 flex items-center justify-center text-center px-1 py-1 md:py-1.5 text-[9px] md:text-[11px] rounded border whitespace-nowrap ${rtpaClass}">${t('rtpa_label')}: ${hospital.rtpa ? t('has_yes') : t('has_no')}</span><span class="col-span-7 flex items-center justify-center text-center px-1 py-1 md:py-1.5 text-[9px] md:text-[11px] rounded border whitespace-nowrap ${evtClass}">${t('evt_label')}: ${hospital.evt ? t('has_yes') : t('has_no')}</span></div>`;
 
                 let actionBtnsHtml = '';
                 if (loggedInUser && loggedInUser.role === '115') {
-                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1.5 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[12px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a><button class="col-span-7 flex items-center justify-center gap-1.5 bg-red-600 !text-white text-[10.5px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-red-700 shadow-sm font-medium transition-colors whitespace-nowrap" onclick="openNotifyModal(${hospital.id}, true)"><i class="fa-solid fa-truck-fast"></i> Điều phối về đây</button></div>`;
+                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[11px] md:text-[12px] py-1.5 md:py-2 px-1 rounded hover:bg-green-700 shadow-sm font-medium transition-colors no-underline whitespace-nowrap"><i class="fa-solid fa-phone"></i> ${t('call_btn')}</a><button class="col-span-7 flex items-center justify-center gap-1.5 bg-red-600 !text-white text-[10px] md:text-[11px] py-1.5 md:py-2 px-1 rounded hover:bg-red-700 shadow-sm font-medium transition-colors whitespace-nowrap" onclick="openNotifyModal(${hospital.id}, true)"><i class="fa-solid fa-truck-fast"></i> ${t('dispatch_btn')}</button></div>`;
                 } else if (loggedInUser && (loggedInUser.role === 'admin' || (loggedInUser.role === 'hospital' && loggedInUser.id === hospital.id))) {
-                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1.5 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[12px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a><button class="col-span-7 flex items-center justify-center gap-1.5 bg-[#eab308] !text-white text-[10.5px] md:text-[13px] py-1.5 md:py-2 px-1 rounded-lg hover:bg-yellow-600 shadow-sm font-medium transition-colors whitespace-nowrap" onclick="openUpdateModal(${hospital.id})"><i class="fa-solid fa-triangle-exclamation"></i> Báo cáo Bệnh viện</button></div>`;
+                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1.5 bg-[#16a34a] !text-white text-[11px] md:text-[12px] py-1.5 md:py-2 px-1 rounded hover:bg-green-700 shadow-sm font-medium transition-colors no-underline whitespace-nowrap"><i class="fa-solid fa-phone"></i> ${t('call_btn')}</a><button class="col-span-7 flex items-center justify-center gap-1.5 bg-[#eab308] !text-white text-[10px] md:text-[11px] py-1.5 md:py-2 px-1 rounded hover:bg-yellow-600 shadow-sm font-medium transition-colors whitespace-nowrap" onclick="openUpdateModal(${hospital.id})"><i class="fa-solid fa-triangle-exclamation"></i> ${t('report_issue_btn')}</button></div>`;
                 } else {
-                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1.5 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1 bg-[#16a34a] !text-white text-[12px] md:text-[13px] py-1.5 md:py-2 px-1 rounded hover:bg-green-700 shadow-sm font-medium transition-colors no-underline"><i class="fa-solid fa-phone"></i> Gọi</a><button class="col-span-7 flex items-center justify-center gap-1 bg-[#f97316] !text-white text-[10.5px] md:text-[13px] py-1.5 md:py-2 px-1 rounded hover:bg-orange-600 shadow-sm font-bold transition-colors whitespace-nowrap" onclick="openNotifyModal(${hospital.id})"><i class="fa-solid fa-bell"></i> Báo trước cho Bệnh viện</button></div>`;
+                    actionBtnsHtml = `<div class="grid grid-cols-12 gap-1 md:gap-2 mb-1 md:mb-2"><a href="tel:${hospital.phone.replace(/\s+/g, '')}" class="col-span-5 flex items-center justify-center gap-1 bg-[#16a34a] !text-white text-[11px] md:text-[12px] py-1.5 md:py-2 px-1 rounded hover:bg-green-700 shadow-sm font-medium transition-colors no-underline whitespace-nowrap"><i class="fa-solid fa-phone"></i> ${t('call_btn')}</a><button class="col-span-7 flex items-center justify-center gap-1 bg-[#f97316] !text-white text-[10px] md:text-[11px] py-1.5 md:py-2 px-1 rounded hover:bg-orange-600 shadow-sm font-bold transition-colors whitespace-nowrap" onclick="openNotifyModal(${hospital.id})"><i class="fa-solid fa-bell"></i> ${t('notify_btn')}</button></div>`;
                 }
 
-                const telemedBtn = (loggedInUser && hospital.tier === 3) ? `<button class="w-full flex items-center justify-center gap-1.5 bg-[#2563eb] !text-white text-[13px] py-1.5 md:py-2 px-2 rounded-lg hover:bg-blue-700 shadow-sm font-medium transition-colors mt-2" onclick="openTelemed()"><i class="fa-solid fa-video"></i> Hội chẩn từ xa</button>` : '';
+                const telemedBtn = (loggedInUser && hospital.tier === 3) ? `<button class="w-full flex items-center justify-center gap-1.5 bg-[#2563eb] !text-white text-[13px] py-1.5 md:py-2 px-2 rounded-lg hover:bg-blue-700 shadow-sm font-medium transition-colors mt-2" onclick="openTelemed()"><i class="fa-solid fa-video"></i> ${t('telemed_btn')}</button>` : '';
                 const noteHtml = hospital.incidentNote ? `<div class="mb-2 md:mb-3 p-2 md:p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-[10px] md:text-xs shadow-sm leading-tight"><b><i class="fa-solid fa-circle-exclamation"></i> Ghi chú sự cố:</b> ${hospital.incidentNote}</div>` : '';
 
-                // Thêm class modern-popup
                 const popupContent = `
                     <div class="w-[250px] md:w-auto md:min-w-[290px] relative">
                         <h3 class="font-bold text-gray-800 text-[15px] md:text-lg mb-0.5 md:mb-1 pr-5 leading-tight">${hospital.name}</h3>
@@ -973,22 +1574,15 @@
                     </div>
                 `;
                 
-                marker.bindPopup(popupContent, { 
-                    className: 'modern-popup', 
-                    autoPanPadding: [20, 20] 
-                }); 
+                marker.bindPopup(popupContent, { className: 'modern-popup', autoPanPadding: [20, 20] }); 
                 
                 marker.on('click', () => { 
-                    if(window.innerWidth < 768) {
-                        map.flyTo([hospital.lat + 0.025, hospital.lng], 14, { duration: 0.5 });
-                    } else {
-                        map.flyTo([hospital.lat, hospital.lng], 14, { duration: 0.5 });
-                    }
+                    if(window.innerWidth < 768) { map.flyTo([hospital.lat + 0.025, hospital.lng], 14, { duration: 0.5 }); } 
+                    else { map.flyTo([hospital.lat, hospital.lng], 14, { duration: 0.5 }); }
                     showRoute(hospital.lat, hospital.lng); 
                 });
                 markers.push({ id: hospital.id, marker: marker });
 
-                // --- LIST ITEM HTML (Giữ nguyên) ---
                 const tierColor = hospital.tier === 3 ? 'bg-red-100 text-red-700 border-red-200' : hospital.tier === 2 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-blue-100 text-blue-700 border-blue-200';
                 const statusDot = hospital.currentStatus === 0 ? 'bg-green-500' : hospital.currentStatus === 1 ? 'bg-yellow-500' : 'bg-red-500 animate-pulse';
                 const noteIcon = hospital.incidentNote ? `<i class="fa-solid fa-circle-exclamation text-red-500 ml-1" title="${hospital.incidentNote}"></i>` : '';
@@ -998,17 +1592,12 @@
 
                 const listItem = document.createElement('div');
                 listItem.className = isNearestPriority ? 'p-2.5 md:p-3 mb-3 border-2 border-green-500 rounded-lg bg-green-50 shadow-md cursor-pointer transition-colors relative' : 'p-2.5 md:p-3 mb-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors bg-white';
-                listItem.innerHTML = `${priorityBadge}<div class="flex justify-between items-start mb-1.5"><h3 class="font-medium text-xs md:text-sm text-gray-800 line-clamp-1 pr-2">${hospital.name} ${noteIcon}</h3><div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${statusDot} mt-0.5 flex-shrink-0 border border-white shadow-sm" title="Trạng thái"></div></div><div class="flex items-center gap-1.5 mb-2 flex-wrap"><span class="text-[9px] md:text-[10px] px-1.5 py-0.5 rounded border ${tierColor}">Tầng ${hospital.tier}</span>${distanceHtml}<a href="tel:${hospital.phone.replace(/\s+/g, '')}" onclick="event.stopPropagation()" class="text-[10px] text-green-600 hover:text-green-800 hover:underline font-medium"><i class="fa-solid fa-phone-volume mr-0.5"></i> ${hospital.phone}</a></div><div class="flex text-[9px] md:text-[10px] text-gray-500 gap-3 border-t pt-1.5"><span><i class="fa-solid fa-syringe mr-1 ${hospital.rtpa ? 'text-green-500' : 'text-gray-300'}"></i>Tiêu sợi huyết</span><span><i class="fa-solid fa-microscope mr-1 ${hospital.evt ? 'text-green-500' : 'text-gray-300'}"></i>Can thiệp mạch não</span></div>`;
+                listItem.innerHTML = `${priorityBadge}<div class="flex justify-between items-start mb-1.5"><h3 class="font-medium text-xs md:text-sm text-gray-800 line-clamp-1 pr-2">${hospital.name} ${noteIcon}</h3><div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${statusDot} mt-0.5 flex-shrink-0 border border-white shadow-sm" title="Trạng thái"></div></div><div class="flex items-center gap-1.5 mb-2 flex-wrap"><span class="text-[9px] md:text-[10px] px-1.5 py-0.5 rounded border ${tierColor}">Tầng ${hospital.tier}</span>${distanceHtml}<a href="tel:${hospital.phone.replace(/\s+/g, '')}" onclick="event.stopPropagation()" class="text-[10px] text-green-600 hover:text-green-800 hover:underline font-medium"><i class="fa-solid fa-phone-volume mr-0.5"></i> ${hospital.phone}</a></div><div class="flex text-[9px] md:text-[10px] text-gray-500 gap-3 border-t pt-1.5"><span><i class="fa-solid fa-syringe mr-1 ${hospital.rtpa ? 'text-green-500' : 'text-gray-300'}"></i>${t('rtpa_label')}</span><span><i class="fa-solid fa-microscope mr-1 ${hospital.evt ? 'text-green-500' : 'text-gray-300'}"></i>${t('evt_label')}</span></div>`;
                 
                 listItem.onclick = () => {
-                    if(window.innerWidth < 768) {
-                        window.scrollTo({top: 0, behavior: 'smooth'});
-                        map.flyTo([hospital.lat + 0.025, hospital.lng], 14, { duration: 1 });
-                    } else {
-                        map.flyTo([hospital.lat, hospital.lng], 14, { duration: 1 });
-                    }
-                    setTimeout(() => marker.openPopup(), 300);
-                    showRoute(hospital.lat, hospital.lng); 
+                    if(window.innerWidth < 768) { window.scrollTo({top: 0, behavior: 'smooth'}); map.flyTo([hospital.lat + 0.025, hospital.lng], 14, { duration: 1 }); } 
+                    else { map.flyTo([hospital.lat, hospital.lng], 14, { duration: 1 }); }
+                    setTimeout(() => marker.openPopup(), 300); showRoute(hospital.lat, hospital.lng); 
                 };
                 listContainer.appendChild(listItem);
             });
@@ -1016,18 +1605,12 @@
             if(displayData.length === 0) listContainer.innerHTML = '<div class="text-center text-sm text-gray-400 p-4">Không tìm thấy cơ sở phù hợp.</div>';
         }
 
-        // Logic Dynamic Popup Shift (Chuyển popup sang trái/phải thông minh)
         map.on('popupopen', function(e) {
             var viewPx = map.latLngToContainerPoint(e.popup._latlng);
             var popupEl = e.popup.getElement();
             if (popupEl && popupEl.classList.contains('modern-popup')) {
-                if (viewPx.x > window.innerWidth / 2) {
-                    popupEl.classList.add('shift-left');
-                    popupEl.classList.remove('shift-right');
-                } else {
-                    popupEl.classList.add('shift-right');
-                    popupEl.classList.remove('shift-left');
-                }
+                if (viewPx.x > window.innerWidth / 2) { popupEl.classList.add('shift-left'); popupEl.classList.remove('shift-right'); } 
+                else { popupEl.classList.add('shift-right'); popupEl.classList.remove('shift-left'); }
             }
         });
 
@@ -1043,15 +1626,8 @@
         });
 
         // --- GIAO DIỆN TELEMEDICINE ---
-        window.openTelemed = function() {
-            document.getElementById('telemed-modal').classList.remove('hidden');
-            document.getElementById('telemed-modal').classList.add('flex');
-            map.closePopup();
-        };
-        window.closeTelemed = function() {
-            document.getElementById('telemed-modal').classList.add('hidden');
-            document.getElementById('telemed-modal').classList.remove('flex');
-        };
+        window.openTelemed = function() { document.getElementById('telemed-modal').classList.remove('hidden'); document.getElementById('telemed-modal').classList.add('flex'); map.closePopup(); };
+        window.closeTelemed = function() { document.getElementById('telemed-modal').classList.add('hidden'); document.getElementById('telemed-modal').classList.remove('flex'); };
 
         // --- MODAL SỰ CỐ & THÔNG BÁO ---
         let currentNotifyHospitalId = null;
@@ -1066,7 +1642,7 @@
                 document.getElementById('btn-submit-notify').classList.replace('bg-orange-600', 'bg-red-600'); document.getElementById('btn-submit-notify').classList.replace('hover:bg-orange-700', 'hover:bg-red-700');
             } else {
                 document.getElementById('notify-modal-title').innerHTML = '<i class="fa-solid fa-truck-medical mr-2"></i>Thông báo ca cấp cứu đang đến';
-                document.getElementById('btn-submit-notify').innerHTML = '<i class="fa-solid fa-paper-plane"></i> BÁO TRƯỚC CHO BỆNH VIỆN';
+                document.getElementById('btn-submit-notify').innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span data-i18n="btn_send_notify">${t('btn_send_notify')}</span>`;
                 document.getElementById('btn-submit-notify').classList.replace('bg-red-600', 'bg-orange-600'); document.getElementById('btn-submit-notify').classList.replace('hover:bg-red-700', 'hover:bg-orange-700');
             }
             
@@ -1092,17 +1668,22 @@
             const pLat = currentUserLat ? currentUserLat + (Math.random() - 0.5) * 0.05 : hospital.lat - 0.02;
             const pLng = currentUserLng ? currentUserLng + (Math.random() - 0.5) * 0.05 : hospital.lng - 0.02;
             const submitTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            
+            const newCaseId = 'case_' + Date.now();
 
             incomingCases.unshift({
-                id: 'case_' + Date.now(), hospitalId: hospital.id, name: name, yob: yob, cccd: document.getElementById('notify-cccd').value.trim(),
+                id: newCaseId, hospitalId: hospital.id, name: name, yob: yob, cccd: document.getElementById('notify-cccd').value.trim(),
                 phone: phone, relPhone: relPhone, symptoms: Array.from(document.querySelectorAll('#notify-modal input[type="checkbox"]:checked')).map(cb => cb.value),
                 time: timeValue, submitTime: submitTimeStr, onset: timeValue, status: "incoming", patientLat: pLat, patientLng: pLng,
-                eta: Math.floor(Math.random() * 5 + 6), alerted5Min: false
+                eta: Math.floor(Math.random() * 5 + 6), alerted5Min: false, hisStatus: 'pending', hisCode: null
             });
             
             showToast(loggedInUser && loggedInUser.role === '115' ? `[TTCC 115] Đã điều xe chuyển ca cấp cứu đến ${hospital.name}!` : `Đã gửi thông báo ca cấp cứu đến ${hospital.name}!`, 'info');
             if(relPhone) setTimeout(() => showToast(`Hệ thống tự động gửi SMS khẩn cấp tới SĐT người thân: ${relPhone}`, 'warning'), 1500);
             
+            // KÍCH HOẠT API HIS MÔ PHỎNG
+            pushToHospitalHIS(newCaseId);
+
             closeNotifyModal(); if(currentView === 'dashboard') renderDashboardCases();
         };
 
@@ -1137,42 +1718,45 @@
         setInterval(() => {
             simCounter++; let changed = false; let needsDashUpdate = false;
 
-            // Xử lý đếm ngược ETA và Di chuyển Live Tracking
             incomingCases.forEach(c => {
                 if (c.status === 'incoming' && c.eta > 0) {
-                    if (simCounter % 2 === 0) { 
-                        c.eta -= 1; needsDashUpdate = true;
-                        
-                        // MÔ PHỎNG XE DI CHUYỂN
-                        const hosp = hospitalsData.find(h => h.id === c.hospitalId);
-                        if (hosp) {
-                            c.patientLat += (hosp.lat - c.patientLat) * 0.15;
-                            c.patientLng += (hosp.lng - c.patientLng) * 0.15;
+                    
+                    // NẾU KHÔNG PHẢI LÀ XE TÀI XẾ (MÔ PHỎNG GIẢ LẬP NHƯ CŨ)
+                    if (!c.isRealTracking) {
+                        if (simCounter % 2 === 0) { 
+                            c.eta -= 1; needsDashUpdate = true;
+                            
+                            const hosp = hospitalsData.find(h => h.id === c.hospitalId);
+                            if (hosp) {
+                                c.patientLat += (hosp.lat - c.patientLat) * 0.15;
+                                c.patientLng += (hosp.lng - c.patientLng) * 0.15;
 
-                            if (currentTrackingCaseId === c.id && dashPatientMarker && currentView === 'dashboard') {
-                                dashPatientMarker.setLatLng([c.patientLat, c.patientLng]);
-                                
-                                // FIX: Tính toán và vẽ lại (rút ngắn dần) tuyến đường
-                                if (dashRoutingControl) {
-                                    dashRoutingControl.setWaypoints([
-                                        L.latLng(c.patientLat, c.patientLng),
-                                        L.latLng(hosp.lat, hosp.lng)
-                                    ]);
+                                if (currentTrackingCaseId === c.id && dashPatientMarker && currentView === 'dashboard') {
+                                    dashPatientMarker.setLatLng([c.patientLat, c.patientLng]);
+                                    if (dashRoutingControl) {
+                                        dashRoutingControl.setWaypoints([
+                                            L.latLng(c.patientLat, c.patientLng),
+                                            L.latLng(hosp.lat, hosp.lng)
+                                        ]);
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        // NẾU LÀ XE CÓ GPS THẬT: Chỉ báo cập nhật UI, không trừ giờ ETA ở đây (ETA đã tính bằng GPS)
+                        needsDashUpdate = true;
+                    }
 
-                        if (c.eta <= 5 && !c.alerted5Min) {
-                            c.alerted5Min = true;
-                            if (loggedInUser && loggedInUser.role === 'hospital' && loggedInUser.id === c.hospitalId) {
-                                showToast(`🚨 BÁO ĐỘNG ĐỎ: Xe cấp cứu chở bệnh nhân ${c.name} sẽ đến trong vòng ${c.eta} phút nữa. Kích hoạt Code Stroke ngay!`, 'error');
-                            }
+                    // TÍNH TOÁN BÁO ĐỘNG ĐỎ (Chung cho cả 2 loại)
+                    if (c.eta <= 5 && !c.alerted5Min) {
+                        c.alerted5Min = true;
+                        if (loggedInUser && loggedInUser.role === 'hospital' && loggedInUser.id === c.hospitalId) {
+                            showToast(`🚨 BÁO ĐỘNG ĐỎ: Xe cấp cứu chở bệnh nhân ${c.name} sẽ đến trong vòng ${c.eta} phút nữa. Kích hoạt Code Stroke ngay!`, 'error');
                         }
                     }
                 }
             });
 
-            // Random thay đổi trạng thái bệnh viện
             hospitalsData.forEach(h => {
                 if (h.manualOverride) return;
                 if (Math.random() < 0.05) { 
